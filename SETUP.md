@@ -76,7 +76,7 @@ python3 test_detailed.py
 
 ## API Endpoints
 
-### GET /
+### GET /status
 Статус бота
 ```json
 {"status": "ok"}

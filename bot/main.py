@@ -1,10 +1,10 @@
 from fastapi import FastAPI
 from loguru import logger
-from db import init_db, init_test_balances
-from webhook import router as webhook_router
-from exchanges.bybit import BybitExchange
-from exchanges.binance import BinanceExchange
-from config import TEST_MODE
+from bot.db import init_db, init_test_balances
+from bot.webhook import router as webhook_router
+from bot.exchanges.bybit import BybitExchange
+from bot.exchanges.binance import BinanceExchange
+from bot.config import TEST_MODE
 
 app = FastAPI()
 
@@ -34,7 +34,7 @@ def startup():
 app.include_router(webhook_router)
 
 
-@app.get("/")
+@app.get("/status")
 def root():
     return {"status": "ok"}
 
@@ -42,6 +42,6 @@ def root():
 @app.get("/balances")
 def get_balances():
     """Получить текущие балансы"""
-    from db import get_all_balances
+    from bot.db import get_all_balances
     balances = get_all_balances()
     return {"balances": balances}

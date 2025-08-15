@@ -1,8 +1,8 @@
 from loguru import logger
-from exchanges.bybit import BybitExchange
-from exchanges.binance import BinanceExchange
-from db import get_balance
-from config import TEST_MODE
+from bot.exchanges.bybit import BybitExchange
+from bot.exchanges.binance import BinanceExchange
+from bot.db import get_balance
+from bot.config import TEST_MODE
 
 
 class ExchangeSelector:

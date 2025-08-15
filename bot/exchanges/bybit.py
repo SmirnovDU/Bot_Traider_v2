@@ -1,8 +1,8 @@
 from pybit.unified_trading import HTTP
 from loguru import logger
-from config import API_KEY_BYBIT, API_SECRET_BYBIT, TEST_MODE, BYBIT_FEE
-from db import get_balance, update_balance, get_last_buy_price
-from utils import calculate_qty_by_precision, calculate_fee_for_buy, calculate_fee_for_sell
+from bot.config import API_KEY_BYBIT, API_SECRET_BYBIT, TEST_MODE, BYBIT_FEE
+from bot.db import get_balance, update_balance, get_last_buy_price
+from bot.utils import calculate_qty_by_precision, calculate_fee_for_buy, calculate_fee_for_sell
 from decimal import Decimal, ROUND_DOWN
 from datetime import datetime
 

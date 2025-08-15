@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Request, HTTPException
 from loguru import logger
-from config import WEBHOOK_SECRET, DEFAULT_EXCHANGE
-from db import save_trade, get_last_buy_price
-from utils import generate_request_id, calculate_qty_by_precision
-from exchange_selector import ExchangeSelector
+from bot.config import WEBHOOK_SECRET, DEFAULT_EXCHANGE
+from bot.db import save_trade, get_last_buy_price
+from bot.utils import generate_request_id, calculate_qty_by_precision
+from bot.exchange_selector import ExchangeSelector
 from datetime import datetime, timezone
 
 router = APIRouter()

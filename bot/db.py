@@ -1,6 +1,6 @@
 import sqlite3
 from loguru import logger
-from config import DB_PATH, TEST_MODE, TEST_BALANCE_USDT
+from bot.config import DB_PATH, TEST_MODE, TEST_BALANCE_USDT
 
 
 def init_db():

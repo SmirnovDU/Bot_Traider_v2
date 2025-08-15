@@ -1,8 +1,8 @@
 from binance.client import Client
 from loguru import logger
-from config import API_KEY_BINANCE, API_SECRET_BINANCE, TEST_MODE, BINANCE_FEE
-from db import get_balance, update_balance, get_last_buy_price
-from utils import calculate_qty_by_precision, calculate_fee_for_buy, calculate_fee_for_sell
+from bot.config import API_KEY_BINANCE, API_SECRET_BINANCE, TEST_MODE, BINANCE_FEE
+from bot.db import get_balance, update_balance, get_last_buy_price
+from bot.utils import calculate_qty_by_precision, calculate_fee_for_buy, calculate_fee_for_sell
 from datetime import datetime
 
 
