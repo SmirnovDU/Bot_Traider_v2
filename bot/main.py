@@ -5,6 +5,8 @@ from bot.webhook import router as webhook_router
 from bot.exchanges.bybit import BybitExchange
 from bot.exchanges.binance import BinanceExchange
 from bot.config import TEST_MODE
+import uvicorn
+import os
 
 app = FastAPI()
 
@@ -45,3 +47,8 @@ def get_balances():
     from bot.db import get_all_balances
     balances = get_all_balances()
     return {"balances": balances}
+
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8000))  # берём PORT из окружения
+    uvicorn.run("main:app", host="0.0.0.0", port=port)
