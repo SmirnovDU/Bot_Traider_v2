@@ -23,4 +23,4 @@ RUN mkdir -p /app/logs
 EXPOSE 8000
 
 # Команда запуска
-CMD ["python", "-m", "uvicorn", "bot.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "python -m uvicorn main:app --host 0.0.0.0 --port ${PORT}"]
