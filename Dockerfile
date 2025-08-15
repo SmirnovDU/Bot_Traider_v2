@@ -20,7 +20,7 @@ COPY . .
 RUN mkdir -p /app/logs
 
 # Открытие порта
-EXPOSE 8000
+# EXPOSE 8000
 
 # Команда запуска
 CMD ["sh", "-c", "python -m uvicorn main:app --host 0.0.0.0 --port ${PORT}"]
