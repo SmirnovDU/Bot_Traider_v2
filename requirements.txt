@@ -1,0 +1,7 @@
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-decouple==3.8
+loguru==0.7.2
+pybit==5.6.0
+python-binance==1.0.19
+httpx==0.25.2

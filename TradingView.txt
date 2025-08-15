@@ -1,0 +1,68 @@
+//@version=6
+strategy("Spot Only EMA Cross with Webhook Signals v6", overlay=true)
+
+// Buy quantity
+qty = input.int(100000, "Buy quantity")
+
+// USDT Amount
+usdtAmount = input.float(6, "USDT per trade")
+
+// Backtest period
+testStartYear = input.int(2019, "Backtest Start Year")
+testStartMonth = input.int(1, "Backtest Start Month")
+testStartDay = input.int(1, "Backtest Start Day")
+testStartHour = input.int(0, "Backtest Start Hour")
+testStartMin = input.int(0, "Backtest Start Minute")
+testPeriodStart = timestamp(testStartYear, testStartMonth, testStartDay, testStartHour, testStartMin)
+
+testStopYear = input.int(2099, "Backtest Stop Year")
+testStopMonth = input.int(1, "Backtest Stop Month")
+testStopDay = input.int(30, "Backtest Stop Day")
+testPeriodStop = timestamp(testStopYear, testStopMonth, testStopDay, 0, 0)
+
+testPeriodBackground = input.bool(title="Color Background?", defval=true)
+testPeriodBackgroundColor = testPeriodBackground and time >= testPeriodStart and time <= testPeriodStop ? color.new(color.green, 90) : na
+
+bgcolor(testPeriodBackgroundColor)
+
+testPeriod() =>
+    time >= testPeriodStart and time <= testPeriodStop
+
+// EMA settings
+ema1 = input.int(10, title="EMA Fast")
+ema2 = input.int(20, title="EMA Slow")
+
+expo = ta.ema(close, ema1)
+ma = ta.ema(close, ema2)
+
+plot(expo, color=color.blue, linewidth=2)
+plot(ma, color=color.orange, linewidth=2)
+
+// Условия входа/выхода только на закрытии бара
+longCondition  = ta.crossover(expo, ma) and barstate.isconfirmed and testPeriod()
+shortCondition = ta.crossunder(expo, ma) and barstate.isconfirmed and testPeriod()
+
+// Состояние позиции: >0 значит в лонге
+inLong = strategy.position_size > 0
+
+// Сигналы для действий
+buySignal  = longCondition and not inLong
+sellSignal = shortCondition and inLong
+
+if buySignal
+    strategy.entry("Buy", strategy.long, qty=qty)
+
+if sellSignal
+    strategy.close("Buy")
+
+// Метки на графике
+plotshape(buySignal,  title="Buy Signal",  text="BUY",  textcolor=color.white, style=shape.labelup,   size=size.normal, location=location.belowbar, color=color.green)
+plotshape(sellSignal, title="Sell Signal", text="SELL", textcolor=color.white, style=shape.labeldown, size=size.normal, location=location.abovebar, color=color.red)
+
+// --- Условия для алертов ---
+alertcondition(buySignal,  title="Buy Webhook Signal",  
+     message='{"secret":"kljGCCKJS78ef6vLKGA88","action":"buy","symbol":"{{ticker}}","usdt_amount":"{{usdtAmount}}"}')
+
+alertcondition(sellSignal, title="Sell Webhook Signal", 
+     message='{"secret":"kljGCCKJS78ef6vLKGA88","action":"sell","symbol":"{{ticker}}","usdt_amount":"{{usdtAmount}}"}')
+     
