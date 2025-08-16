@@ -164,10 +164,18 @@ async def webhook(request: Request):
         
         # Рассчитываем прибыль только при продаже
         profit = None
+        profit_no_fees = None
         if side == "sell":
             last_buy_price = get_last_buy_price(exchange.name, symbol)
             if last_buy_price:
+                # Прибыль с учетом комиссий (текущая логика)
                 profit = (price - last_buy_price) * qty - fee
+                
+                # Прибыль БЕЗ комиссий (для анализа стратегии)
+                profit_no_fees = (price - last_buy_price) * qty
+                
+                logger.info(f"Анализ прибыли {symbol}: цена покупки={last_buy_price}, цена продажи={price}")
+                logger.info(f"Прибыль БЕЗ комиссий: ${profit_no_fees:.4f}, С комиссиями: ${profit:.4f}, Комиссия: ${fee:.4f}")
         # Для покупок (side == "buy") profit остается None
 
         # Сохраняем сделку
@@ -182,6 +190,7 @@ async def webhook(request: Request):
             "amount_usdt": usdt_amount if side == "buy" else qty * price,
             "fee": fee,
             "profit": profit,
+            "profit_no_fees": profit_no_fees,
             "balance_after": balance_after,
             "note": str(result)
         }

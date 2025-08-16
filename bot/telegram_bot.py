@@ -74,6 +74,8 @@ class TelegramBot:
                 await self.handle_balances()
             elif command == "/profit":
                 await self.handle_profit()
+            elif command == "/strategy":
+                await self.handle_strategy()
             elif command == "/summary":
                 await self.handle_summary()
             else:
@@ -94,6 +96,7 @@ class TelegramBot:
 📊 <b>/status</b> - Статус бота и основная информация
 💰 <b>/balances</b> - Текущие балансы по всем монетам
 📈 <b>/profit</b> - Статистика прибыли и убытков
+🧪 <b>/strategy</b> - Анализ стратегии (прибыль БЕЗ комиссий)
 📋 <b>/summary</b> - Краткая сводка по сделкам
 ❓ <b>/help</b> - Показать это сообщение
 
@@ -211,6 +214,47 @@ class TelegramBot:
         except Exception as e:
             logger.error(f"Ошибка в handle_profit: {e}")
             await self.send_message(f"🚨 Ошибка получения статистики прибыли: {str(e)}")
+    
+    async def handle_strategy(self):
+        """Обработка команды /strategy - анализ стратегии БЕЗ комиссий"""
+        try:
+            from bot.db import get_profit_statistics_no_fees, get_profit_statistics
+            
+            # Получаем статистику БЕЗ комиссий
+            stats_no_fees = get_profit_statistics_no_fees()
+            # Получаем обычную статистику для сравнения
+            stats_with_fees = get_profit_statistics()
+            
+            # Эмодзи для прибыли БЕЗ комиссий
+            profit_emoji_no_fees = "💚" if stats_no_fees['total_profit_no_fees'] > 0 else "❤️" if stats_no_fees['total_profit_no_fees'] < 0 else "💛"
+            
+            strategy_text = f"""
+🧪 <b>Анализ стратегии (БЕЗ комиссий):</b>
+
+{profit_emoji_no_fees} <b>Общая прибыль БЕЗ комиссий:</b> ${stats_no_fees['total_profit_no_fees']:.4f}
+📊 <b>Средняя прибыль БЕЗ комиссий:</b> ${stats_no_fees['avg_profit_no_fees']:.4f}
+🎯 <b>Процент успеха БЕЗ комиссий:</b> {stats_no_fees['win_rate_no_fees']:.1f}%
+
+✅ <b>Прибыльных сделок:</b> {stats_no_fees['profitable_trades_no_fees']}
+❌ <b>Убыточных сделок:</b> {stats_no_fees['losing_trades_no_fees']}
+📋 <b>Всего сделок:</b> {stats_no_fees['total_trades_with_profit_no_fees']}
+
+🏆 <b>Лучшая сделка БЕЗ комиссий:</b> ${stats_no_fees['best_trade_no_fees']:.4f}
+📉 <b>Худшая сделка БЕЗ комиссий:</b> ${stats_no_fees['worst_trade_no_fees']:.4f}
+
+<b>📈 Сравнение с учетом комиссий:</b>
+• БЕЗ комиссий: ${stats_no_fees['total_profit_no_fees']:.4f}
+• С комиссиями: ${stats_with_fees['total_profit']:.4f}
+• Потери на комиссиях: ${stats_with_fees['total_fees']:.4f}
+
+💡 <b>Вывод:</b> {'Стратегия прибыльна, проблема в комиссиях' if stats_no_fees['total_profit_no_fees'] > 0 > stats_with_fees['total_profit'] else 'Стратегия работает хорошо' if stats_no_fees['total_profit_no_fees'] > 0 else 'Стратегия требует доработки'}
+            """
+            
+            await self.send_message(strategy_text.strip())
+            
+        except Exception as e:
+            logger.error(f"Ошибка в handle_strategy: {e}")
+            await self.send_message(f"🚨 Ошибка анализа стратегии: {str(e)}")
     
     async def handle_summary(self):
         """Обработка команды /summary"""

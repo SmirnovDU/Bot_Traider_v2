@@ -20,6 +20,7 @@ def init_db():
         amount_usdt REAL,
         fee REAL,
         profit REAL,
+        profit_no_fees REAL,
         balance_after REAL,
         note TEXT)
     """)
@@ -151,9 +152,10 @@ def save_trade(data: dict):
                             amount_usdt,
                             fee,
                             profit,
+                            profit_no_fees,
                             balance_after,
                             note)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             data.get("request_id"),
             data.get("timestamp"),
@@ -165,6 +167,7 @@ def save_trade(data: dict):
             data.get("amount_usdt"),
             data.get("fee"),
             data.get("profit"),
+            data.get("profit_no_fees"),
             data.get("balance_after"),
             data.get("note")
         ))
@@ -313,3 +316,58 @@ def get_trades_summary():
         "total_trades": total_trades,
         "recent_trades": recent_trades_dict
     }
+
+
+def get_profit_statistics_no_fees():
+    """Получить статистику по прибыли БЕЗ комиссий (анализ стратегии)"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cur = conn.cursor()
+        
+        # Общая прибыль БЕЗ комиссий
+        cur.execute("SELECT SUM(profit_no_fees) FROM trades WHERE profit_no_fees IS NOT NULL")
+        total_profit_no_fees = cur.fetchone()[0] or 0.0
+        
+        # Количество прибыльных сделок БЕЗ комиссий
+        cur.execute("SELECT COUNT(*) FROM trades WHERE profit_no_fees > 0")
+        profitable_trades_no_fees = cur.fetchone()[0] or 0
+        
+        # Количество убыточных сделок БЕЗ комиссий
+        cur.execute("SELECT COUNT(*) FROM trades WHERE profit_no_fees < 0")
+        losing_trades_no_fees = cur.fetchone()[0] or 0
+        
+        # Общее количество сделок с прибылью БЕЗ комиссий
+        cur.execute("SELECT COUNT(*) FROM trades WHERE profit_no_fees IS NOT NULL")
+        total_trades_with_profit_no_fees = cur.fetchone()[0] or 0
+        
+        # Средняя прибыль БЕЗ комиссий
+        cur.execute("SELECT AVG(profit_no_fees) FROM trades WHERE profit_no_fees IS NOT NULL")
+        avg_profit_no_fees = cur.fetchone()[0] or 0.0
+        
+        # Лучшая сделка БЕЗ комиссий
+        cur.execute("SELECT MAX(profit_no_fees) FROM trades WHERE profit_no_fees IS NOT NULL")
+        best_trade_no_fees = cur.fetchone()[0] or 0.0
+        
+        # Худшая сделка БЕЗ комиссий
+        cur.execute("SELECT MIN(profit_no_fees) FROM trades WHERE profit_no_fees IS NOT NULL")
+        worst_trade_no_fees = cur.fetchone()[0] or 0.0
+        
+        conn.close()
+        
+        return {
+            "total_profit_no_fees": float(total_profit_no_fees),
+            "profitable_trades_no_fees": profitable_trades_no_fees,
+            "losing_trades_no_fees": losing_trades_no_fees,
+            "total_trades_with_profit_no_fees": total_trades_with_profit_no_fees,
+            "avg_profit_no_fees": float(avg_profit_no_fees),
+            "best_trade_no_fees": float(best_trade_no_fees),
+            "worst_trade_no_fees": float(worst_trade_no_fees),
+            "win_rate_no_fees": (profitable_trades_no_fees / total_trades_with_profit_no_fees * 100) if total_trades_with_profit_no_fees > 0 else 0
+        }
+    except Exception as e:
+        logger.error(f"Ошибка получения статистики стратегии: {e}")
+        return {
+            "total_profit_no_fees": 0.0, "profitable_trades_no_fees": 0, "losing_trades_no_fees": 0,
+            "total_trades_with_profit_no_fees": 0, "avg_profit_no_fees": 0.0, "best_trade_no_fees": 0.0,
+            "worst_trade_no_fees": 0.0, "win_rate_no_fees": 0.0
+        }
