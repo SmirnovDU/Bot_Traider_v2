@@ -1,14 +1,6 @@
 import mysql.connector
 from loguru import logger
-from bot.config import TEST_MODE, TEST_BALANCE_USDT
-import os
-
-# MySQL настройки из переменных окружения
-MYSQL_HOST = os.getenv("MYSQL_HOST", "localhost")
-MYSQL_PORT = int(os.getenv("MYSQL_PORT", "3306"))
-MYSQL_USER = os.getenv("MYSQL_USER", "root")
-MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "")
-MYSQL_DATABASE = os.getenv("MYSQL_DATABASE", "trading_bot")
+from bot.config import TEST_MODE, TEST_BALANCE_USDT, MYSQL_HOST, MYSQL_PORT, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DATABASE
 
 def get_connection():
     """Получить соединение с MySQL"""

@@ -10,31 +10,26 @@
 #### Шаг 1: Создание MySQL сервиса
 ```bash
 # В Railway Dashboard:
-1. New Project → Deploy MySQL
-2. Название: trading-bot-mysql
-3. Дождитесь развертывания
+1. New → Database → Add MySQL
+2. Дождитесь развертывания
+3. Railway автоматически создаст переменные
 ```
 
-#### Шаг 2: Получение данных подключения
-```bash
-# В настройках MySQL сервиса → Connect → Variables:
-MYSQL_HOST=containers-us-west-xxx.railway.app
-MYSQL_PORT=3306
-MYSQL_USER=root
-MYSQL_PASSWORD=generated_password
-MYSQL_DATABASE=railway
-```
+#### Шаг 2: Готово! 
+Railway автоматически предоставляет переменные:
+- `MYSQLHOST` 
+- `MYSQLPORT`
+- `MYSQLUSER`
+- `MYSQLPASSWORD` 
+- `MYSQLDATABASE`
 
-#### Шаг 3: Настройка переменных бота
+#### Шаг 3: Настройка бота
+В настройках сервиса бота установите:
 ```bash
-# В настройках основного сервиса бота:
 USE_MYSQL=true
-MYSQL_HOST=containers-us-west-xxx.railway.app
-MYSQL_PORT=3306
-MYSQL_USER=root
-MYSQL_PASSWORD=your_generated_password
-MYSQL_DATABASE=trading_bot
 ```
+
+Все остальные переменные Railway предоставит автоматически!
 
 ### 2. 📊 Миграция данных
 
