@@ -112,11 +112,18 @@ class TelegramBot:
             trades_summary = get_trades_summary()
             profit_stats = get_profit_statistics()
             
+            # Рассчитываем время работы (примерное)
+            import time
+            uptime_seconds = int(time.time()) % 86400  # секунды с начала дня
+            uptime_hours = uptime_seconds // 3600
+            uptime_minutes = (uptime_seconds % 3600) // 60
+            
             status_text = f"""
 🤖 <b>Статус торгового бота</b>
 
 🔸 <b>Режим:</b> {mode}
-🕒 <b>Время:</b> {current_time}
+🕒 <b>Текущее время:</b> {current_time}
+⏱️ <b>Время работы:</b> ~{uptime_hours}ч {uptime_minutes}м
 📊 <b>Всего сделок:</b> {trades_summary['total_trades']}
 💰 <b>Общая прибыль:</b> ${profit_stats['total_profit']:.4f}
 💸 <b>Общие комиссии:</b> ${profit_stats['total_fees']:.4f}

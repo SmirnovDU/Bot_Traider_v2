@@ -46,9 +46,11 @@ async def lifespan(app: FastAPI):
     
     # Отправляем уведомление о запуске в Telegram
     try:
+        from datetime import datetime, timezone
+        startup_time = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
         await notify_status("Бот запущен и готов к работе", {
             "Режим": mode,
-            "Время запуска": "N/A"
+            "Время запуска": startup_time
         })
     except Exception as e:
         logger.error(f"Ошибка отправки Telegram уведомления: {e}")
