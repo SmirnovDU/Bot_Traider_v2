@@ -223,7 +223,14 @@ class TelegramBot:
             if summary['recent_trades']:
                 summary_text += "🕒 <b>Последние 5 сделок:</b>\n"
                 for trade in summary['recent_trades']:
-                    timestamp, exchange, side, symbol, price, qty, amount_usdt, profit = trade
+                    timestamp = trade['timestamp']
+                    exchange = trade['exchange']
+                    side = trade['side']
+                    symbol = trade['symbol']
+                    price = trade['price']
+                    qty = trade['qty']
+                    amount_usdt = trade['amount_usdt']
+                    profit = trade['profit']
                     
                     # Форматируем время
                     try:
@@ -235,9 +242,9 @@ class TelegramBot:
                     # Эмодзи для типа сделки
                     side_emoji = "🟢" if side == "buy" else "🔴"
                     
-                    # Прибыль (если есть)
+                    # Прибыль (только для продаж)
                     profit_str = ""
-                    if profit is not None:
+                    if side == "sell" and profit is not None:
                         profit_emoji = "💚" if profit > 0 else "❤️"
                         profit_str = f" {profit_emoji}${profit:.3f}"
                     

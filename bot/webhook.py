@@ -161,12 +161,13 @@ async def webhook(request: Request):
         # Комиссия уже рассчитана в place_order
         fee = result.get("fee", 0.0) if isinstance(result, dict) else 0.0
         
-        # Рассчитываем прибыль при продаже
+        # Рассчитываем прибыль только при продаже
         profit = None
         if side == "sell":
             last_buy_price = get_last_buy_price(exchange.name, symbol)
             if last_buy_price:
                 profit = (price - last_buy_price) * qty - fee
+        # Для покупок (side == "buy") profit остается None
 
         # Сохраняем сделку
         trade_data = {
