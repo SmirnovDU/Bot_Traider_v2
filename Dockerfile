@@ -16,8 +16,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Копирование исходного кода
 COPY . .
 
-# Создание директории для логов
-RUN mkdir -p /app/logs
+# Создание директорий для логов и данных БД
+RUN mkdir -p /app/logs /app/data
 
 # Делаем стартовый скрипт исполняемым
 RUN chmod +x start.sh

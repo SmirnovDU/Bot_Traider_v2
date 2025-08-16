@@ -152,7 +152,10 @@ class TelegramBot:
             bybit_balances = []
             binance_balances = []
             
-            for exchange, coin, amount in balances:
+            for balance in balances:
+                exchange = balance['exchange']
+                coin = balance['coin']
+                amount = balance['amount']
                 if exchange == "Bybit":
                     bybit_balances.append((coin, amount))
                 elif exchange == "Binance":

@@ -13,8 +13,8 @@ DEFAULT_EXCHANGE = config("DEFAULT_EXCHANGE", default="bybit").lower()
 TEST_MODE = config("TEST_MODE", default="True").lower() == "true"
 TEST_BALANCE_USDT = float(config("TEST_BALANCE_USDT", default="100"))
 
-# Путь к БД относительно папки bot
-DB_PATH = os.path.join(os.path.dirname(__file__), "trades.db")
+# Путь к БД - поддерживает переменную окружения для Docker
+DB_PATH = config("DB_PATH", default=os.path.join(os.path.dirname(__file__), "trades.db"))
 
 # Комиссии (в процентах) - теперь рассчитываются динамически
 BYBIT_FEE = 0.1  # 0.1%

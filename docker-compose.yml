@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  trading-bot:
+    build: .
+    container_name: trading-bot
+    environment:
+      # Основные настройки
+      - WEBHOOK_SECRET=${WEBHOOK_SECRET}
+      - DEFAULT_EXCHANGE=${DEFAULT_EXCHANGE}
+      - TEST_MODE=${TEST_MODE}
+      - TEST_BALANCE_USDT=${TEST_BALANCE_USDT}
+      
+      # API ключи
+      - API_KEY_BYBIT=${API_KEY_BYBIT}
+      - API_SECRET_BYBIT=${API_SECRET_BYBIT}
+      - API_KEY_BINANCE=${API_KEY_BINANCE}
+      - API_SECRET_BINANCE=${API_SECRET_BINANCE}
+      
+      # Telegram
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      - TELEGRAM_ENABLED=${TELEGRAM_ENABLED}
+      - TELEGRAM_BOT_WEBHOOK_URL=${TELEGRAM_BOT_WEBHOOK_URL}
+      
+      # База данных (внешний путь)
+      - DB_PATH=/app/data/trades.db
+      
+      # Порт
+      - PORT=${PORT:-8000}
+    
+    ports:
+      - "${PORT:-8000}:${PORT:-8000}"
+    
+    volumes:
+      # Постоянное хранение БД
+      - trading_bot_data:/app/data
+      
+      # Логи (опционально)
+      - trading_bot_logs:/app/logs
+    
+    restart: unless-stopped
+    
+    # Healthcheck
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${PORT:-8000}/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  # Том для постоянного хранения БД
+  trading_bot_data:
+    driver: local
+    
+  # Том для логов
+  trading_bot_logs:
+    driver: local
