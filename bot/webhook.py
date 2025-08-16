@@ -74,6 +74,45 @@ async def webhook(request: Request):
         # При продаже используем весь доступный баланс монеты
         coin_symbol = symbol.replace("USDT", "")
         coin_balance = exchange.get_balance(coin_symbol)
+        
+        # Проверяем, что есть монеты для продажи
+        if coin_balance <= 0:
+            error_msg = f"Нет {coin_symbol} для продажи. Баланс: {coin_balance}"
+            logger.warning(error_msg)
+            
+            # Отправляем уведомление об ошибке в Telegram
+            try:
+                await notify_error(error_msg, f"Попытка продажи {symbol}")
+            except Exception as telegram_error:
+                logger.error(f"Ошибка отправки Telegram уведомления: {telegram_error}")
+            
+            return {
+                "status": "Error",
+                "reason": "No coins to sell",
+                "coin_symbol": coin_symbol,
+                "coin_balance": coin_balance
+            }
+        
+        # Проверяем минимальную сумму сделки (например, $1)
+        estimated_value = coin_balance * price
+        if estimated_value < 1.0:
+            error_msg = f"Сумма продажи слишком мала: ${estimated_value:.4f} (мин. $1.00)"
+            logger.warning(error_msg)
+            
+            # Отправляем уведомление об ошибке в Telegram
+            try:
+                await notify_error(error_msg, f"Малая сумма продажи {symbol}")
+            except Exception as telegram_error:
+                logger.error(f"Ошибка отправки Telegram уведомления: {telegram_error}")
+            
+            return {
+                "status": "Error",
+                "reason": "Amount too small",
+                "coin_symbol": coin_symbol,
+                "coin_balance": coin_balance,
+                "estimated_value": estimated_value
+            }
+        
         qty = coin_balance
         market_unit = "baseCoin" if exchange.name == "Bybit" else None
 
