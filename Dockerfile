@@ -19,10 +19,11 @@ COPY . .
 # Создание директории для логов
 RUN mkdir -p /app/logs
 
+# Делаем стартовый скрипт исполняемым
+RUN chmod +x start.sh
+
 # Открытие порта
-# EXPOSE 8000
+#EXPOSE 8000
 
 # Команда запуска
-#CMD ["sh", "-c", "python -m uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]
-
-CMD ["python", "main.py"]
+CMD ["./start.sh"]

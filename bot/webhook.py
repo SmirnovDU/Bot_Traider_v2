@@ -4,6 +4,7 @@ from bot.config import WEBHOOK_SECRET, DEFAULT_EXCHANGE
 from bot.db import save_trade, get_last_buy_price
 from bot.utils import generate_request_id, calculate_qty_by_precision
 from bot.exchange_selector import ExchangeSelector
+from bot.telegram_notifier import notify_trade, notify_error
 from datetime import datetime, timezone
 
 router = APIRouter()
@@ -42,6 +43,14 @@ async def webhook(request: Request):
 
     # Проверка 10% лимита
     if usdt_amount > balance_usdt * 0.1:
+        error_msg = f"Сумма сделки ${usdt_amount:.2f} превышает 10% от баланса (${balance_usdt * 0.1:.2f})"
+        
+        # Отправляем уведомление о превышении лимита в Telegram
+        try:
+            await notify_error(error_msg, f"Превышение лимита для {side} {symbol}")
+        except Exception as telegram_error:
+            logger.error(f"Ошибка отправки Telegram уведомления о лимите: {telegram_error}")
+        
         return {
             "status": "Error",
             "reason": "Amount exceeds 10% of balance",
@@ -99,6 +108,12 @@ async def webhook(request: Request):
 
         logger.info(f"Сделка выполнена: {request_id} - {side} {qty} {symbol} по {price}")
 
+        # Отправляем уведомление в Telegram
+        try:
+            await notify_trade(trade_data)
+        except Exception as telegram_error:
+            logger.error(f"Ошибка отправки Telegram уведомления: {telegram_error}")
+
         return {
             "status": "ok", 
             "request_id": request_id,
@@ -110,4 +125,11 @@ async def webhook(request: Request):
 
     except Exception as e:
         logger.error(f"Ошибка выполнения сделки: {e}")
+        
+        # Отправляем уведомление об ошибке в Telegram
+        try:
+            await notify_error(str(e), f"Ошибка при выполнении {side} {symbol}")
+        except Exception as telegram_error:
+            logger.error(f"Ошибка отправки Telegram уведомления об ошибке: {telegram_error}")
+        
         raise HTTPException(status_code=500, detail=str(e))

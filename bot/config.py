@@ -19,3 +19,8 @@ DB_PATH = os.path.join(os.path.dirname(__file__), "trades.db")
 # Комиссии (в процентах) - теперь рассчитываются динамически
 BYBIT_FEE = 0.1  # 0.1%
 BINANCE_FEE = 0.1  # 0.1%
+
+# Telegram настройки
+TELEGRAM_BOT_TOKEN = config("TELEGRAM_BOT_TOKEN", default=None)
+TELEGRAM_CHAT_ID = config("TELEGRAM_CHAT_ID", default=None)
+TELEGRAM_ENABLED = config("TELEGRAM_ENABLED", default="False").lower() == "true"
