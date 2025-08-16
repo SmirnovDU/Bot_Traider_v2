@@ -18,7 +18,18 @@ class BybitExchange:
 
     def get_last_price(self, symbol):
         if TEST_MODE:
-            return 100.0  # фейковая цена для теста
+            # В тестовом режиме используем реальные цены с резервной биржи
+            try:
+                import requests
+                response = requests.get(f"https://api.bybit.com/v5/market/tickers?category=spot&symbol={symbol}")
+                data = response.json()
+                if data["retCode"] == 0 and data["result"]["list"]:
+                    price = float(data["result"]["list"][0]["lastPrice"])
+                    logger.info(f"Получена реальная цена {symbol} от Bybit: {price}")
+                    return price
+            except Exception as e:
+                logger.warning(f"Не удалось получить реальную цену Bybit в тестовом режиме: {e}")
+            return 100.0  # резервная цена
         try:
             ticker = self.session.get_tickers(category="spot", symbol=symbol)
             return float(ticker["result"]["list"][0]["lastPrice"])
@@ -61,7 +72,8 @@ class BybitExchange:
                 
                 # Получаем баланс после сделки для расчёта комиссии
                 usdt_balance_after = get_balance(self.name, "USDT")
-                fee = calculate_fee_for_buy(usdt_balance_before, usdt_balance_after, deal_value, price)
+                coin_balance_after = get_balance(self.name, symbol.replace("USDT", ""))
+                fee = calculate_fee_for_buy(usdt_balance_before, usdt_balance_after, coin_balance_before, coin_balance_after, deal_value, price)
                 
             else:
                 coin_balance_before = get_balance(self.name, symbol.replace("USDT", ""))

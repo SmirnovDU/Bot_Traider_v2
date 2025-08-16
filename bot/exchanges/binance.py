@@ -17,7 +17,18 @@ class BinanceExchange:
 
     def get_last_price(self, symbol):
         if TEST_MODE:
-            return 25000.0
+            # В тестовом режиме используем реальные цены с публичного API
+            try:
+                import requests
+                response = requests.get(f"https://api.binance.com/api/v3/ticker/price?symbol={symbol}")
+                data = response.json()
+                if "price" in data:
+                    price = float(data["price"])
+                    logger.info(f"Получена реальная цена {symbol} от Binance: {price}")
+                    return price
+            except Exception as e:
+                logger.warning(f"Не удалось получить реальную цену Binance в тестовом режиме: {e}")
+            return 25000.0  # резервная цена
         try:
             ticker = self.client.get_symbol_ticker(symbol=symbol)
             return float(ticker["price"])
@@ -56,7 +67,8 @@ class BinanceExchange:
                 
                 # Получаем баланс после сделки для расчёта комиссии
                 usdt_balance_after = get_balance(self.name, "USDT")
-                fee = calculate_fee_for_buy(usdt_balance_before, usdt_balance_after, deal_value, price)
+                coin_balance_after = get_balance(self.name, symbol.replace("USDT", ""))
+                fee = calculate_fee_for_buy(usdt_balance_before, usdt_balance_after, coin_balance_before, coin_balance_after, deal_value, price)
                 
             else:
                 coin_balance_before = get_balance(self.name, symbol.replace("USDT", ""))
