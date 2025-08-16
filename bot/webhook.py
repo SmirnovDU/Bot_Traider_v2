@@ -13,10 +13,18 @@ exchange_selector = ExchangeSelector()
 
 @router.post("/webhook")
 async def webhook(request: Request):
-    data = await request.json()
+    try:
+        data = await request.json()
+    except Exception as e:
+        body = await request.body()
+        logger.error(f"Ошибка парсинга JSON: {e}")
+        logger.error(f"Полученные данные: {body.decode('utf-8')[:500]}")
+        raise HTTPException(status_code=400, detail="Invalid JSON format")
+    
     logger.info(f"Сигнал: {data}")
 
     if data.get("secret") != WEBHOOK_SECRET:
+        logger.warning(f"Неверный секрет: получен '{data.get('secret')}', ожидается '{WEBHOOK_SECRET}'")
         raise HTTPException(status_code=403, detail="Access denied")
 
     side = data.get("action", "").lower()
