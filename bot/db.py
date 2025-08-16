@@ -109,6 +109,33 @@ def get_unsold_quantity(exchange, symbol):
     return max(0, total_bought - total_sold)
 
 
+def get_exchange_with_coins(symbol):
+    """Найти биржу с максимальным количеством непроданных монет"""
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    
+    # Получаем балансы монет по биржам (покупки - продажи)
+    cur.execute("""
+    SELECT exchange, 
+           COALESCE(SUM(CASE WHEN side='buy' THEN qty ELSE 0 END), 0) - 
+           COALESCE(SUM(CASE WHEN side='sell' THEN qty ELSE 0 END), 0) as balance
+    FROM trades 
+    WHERE symbol=? 
+    GROUP BY exchange
+    HAVING balance > 0
+    ORDER BY balance DESC
+    LIMIT 1
+    """, (symbol,))
+    
+    result = cur.fetchone()
+    conn.close()
+    
+    if result:
+        return result[0]  # Возвращаем название биржи
+    else:
+        return None
+
+
 def save_trade(data: dict):
     try:
         conn = sqlite3.connect(DB_PATH)

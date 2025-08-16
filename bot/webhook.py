@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request, HTTPException
 from loguru import logger
 from bot.config import WEBHOOK_SECRET, DEFAULT_EXCHANGE
-from bot.db import save_trade, get_last_buy_price, has_previous_buy, get_unsold_quantity
+from bot.db import save_trade, get_last_buy_price, has_previous_buy, get_unsold_quantity, get_exchange_with_coins
 from bot.utils import generate_request_id, calculate_qty_by_precision
 from bot.exchange_selector import ExchangeSelector
 from bot.telegram_notifier import notify_trade, notify_error
@@ -40,29 +40,30 @@ async def webhook(request: Request):
         exchange, price = exchange_selector.get_best_price_exchange(symbol, usdt_amount)
         logger.info(f"Выбрана биржа {exchange.name} для покупки по цене {price}")
     else:
-        # Для продажи используем биржу из сигнала или по умолчанию
-        exchange_name = data.get("exchange", DEFAULT_EXCHANGE).lower()
-        exchange = exchange_selector.get_exchange_by_name(exchange_name)
-        price = exchange.get_last_price(symbol)
-        logger.info(f"Используем биржу {exchange.name} для продажи по цене {price}")
+        # Для продажи находим биржу с максимальным количеством монет
+        exchange_with_coins = get_exchange_with_coins(symbol)
         
-        # Проверяем, была ли покупка этой монеты ранее
-        if not has_previous_buy(exchange.name, symbol):
-            error_msg = f"Нет истории покупки {symbol} на {exchange.name}. Продажа запрещена."
+        if not exchange_with_coins:
+            error_msg = f"Нет непроданных {symbol} ни на одной бирже. Продажа невозможна."
             logger.warning(error_msg)
             
             # Отправляем уведомление об ошибке в Telegram
             try:
-                await notify_error(error_msg, f"Попытка продажи без покупки {symbol}")
+                await notify_error(error_msg, f"Попытка продажи без монет {symbol}")
             except Exception as telegram_error:
                 logger.error(f"Ошибка отправки Telegram уведомления: {telegram_error}")
             
             return {
                 "status": "Error",
-                "reason": "No purchase history",
+                "reason": "No coins to sell",
                 "symbol": symbol,
-                "exchange": exchange.name
+                "searched_exchanges": ["Bybit", "Binance"]
             }
+        
+        # Используем биржу где есть монеты
+        exchange = exchange_selector.get_exchange_by_name(exchange_with_coins.lower())
+        price = exchange.get_last_price(symbol)
+        logger.info(f"Найдены монеты {symbol} на бирже {exchange.name}, продаём по цене {price}")
 
     # Получаем баланс для проверки лимита
     balance_usdt = exchange.get_balance("USDT")
