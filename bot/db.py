@@ -39,12 +39,24 @@ def init_db():
 
 
 def init_test_balances():
-    """Инициализация тестовых балансов"""
+    """Инициализация тестовых балансов только если их еще нет"""
     if TEST_MODE:
-        # Единый баланс для обеих бирж в тестовом режиме
-        update_balance("Bybit", "USDT", TEST_BALANCE_USDT)
-        update_balance("Binance", "USDT", TEST_BALANCE_USDT)
-        logger.info(f"Тестовые балансы инициализированы: {TEST_BALANCE_USDT} USDT для обеих бирж")
+        # Проверяем, есть ли уже балансы
+        bybit_balance = get_balance("Bybit", "USDT")
+        binance_balance = get_balance("Binance", "USDT")
+        
+        # Инициализируем только если балансов нет (первый запуск)
+        if bybit_balance == 0.0:
+            update_balance("Bybit", "USDT", TEST_BALANCE_USDT)
+            logger.info(f"Инициализирован тестовый баланс Bybit: {TEST_BALANCE_USDT} USDT")
+        else:
+            logger.info(f"Существующий баланс Bybit: {bybit_balance} USDT")
+            
+        if binance_balance == 0.0:
+            update_balance("Binance", "USDT", TEST_BALANCE_USDT)
+            logger.info(f"Инициализирован тестовый баланс Binance: {TEST_BALANCE_USDT} USDT")
+        else:
+            logger.info(f"Существующий баланс Binance: {binance_balance} USDT")
 
 
 def get_last_buy_price(exchange, symbol):
@@ -166,7 +178,16 @@ def get_all_balances():
     cur.execute("SELECT exchange, coin, amount FROM balances WHERE amount > 0 ORDER BY exchange, coin")
     rows = cur.fetchall()
     conn.close()
-    return rows
+    
+    # Преобразуем в список словарей для удобства
+    return [
+        {
+            "exchange": row[0],
+            "coin": row[1], 
+            "amount": row[2]
+        }
+        for row in rows
+    ]
 
 
 def get_profit_statistics():
@@ -246,7 +267,22 @@ def get_trades_summary():
     
     conn.close()
     
+    # Преобразуем recent_trades в список словарей
+    recent_trades_dict = [
+        {
+            "timestamp": row[0],
+            "exchange": row[1],
+            "side": row[2],
+            "symbol": row[3],
+            "price": row[4],
+            "qty": row[5],
+            "amount_usdt": row[6],
+            "profit": row[7]
+        }
+        for row in recent_trades
+    ]
+    
     return {
         "total_trades": total_trades,
-        "recent_trades": recent_trades
+        "recent_trades": recent_trades_dict
     }

@@ -46,7 +46,7 @@ class BinanceExchange:
             logger.error(f"Ошибка получения баланса Binance: {e}")
             return 0.0
 
-    def place_order(self, side, symbol, qty):
+    def place_order(self, side, symbol, qty, market_unit=None):
         if TEST_MODE:
             price = self.get_last_price(symbol)
             
