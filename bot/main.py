@@ -80,15 +80,23 @@ def get_profit():
 
 
 @app.post("/telegram-webhook")
-async def telegram_webhook(update: dict):
+async def telegram_webhook_post(update: dict):
     """Webhook для обработки команд от Telegram"""
     from bot.telegram_bot import process_telegram_update
+    logger.info(f"Получен POST запрос на telegram-webhook: {update}")
     try:
         success = await process_telegram_update(update)
         return {"ok": success}
     except Exception as e:
         logger.error(f"Ошибка обработки Telegram webhook: {e}")
         return {"ok": False, "error": str(e)}
+
+
+@app.get("/telegram-webhook")
+async def telegram_webhook_get():
+    """GET endpoint для проверки webhook Telegram"""
+    logger.info("Получен GET запрос на telegram-webhook (проверка от Telegram)")
+    return {"status": "ok", "message": "Telegram webhook is active"}
 
 
 if __name__ == "__main__":

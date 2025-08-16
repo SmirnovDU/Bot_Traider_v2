@@ -232,20 +232,41 @@ async def test_api_endpoints():
     import httpx
     
     base_url = "http://localhost:8000"
-    endpoints = ["/status", "/balances", "/profit"]
+    get_endpoints = ["/status", "/balances", "/profit", "/telegram-webhook"]
     
     async with httpx.AsyncClient() as client:
-        for endpoint in endpoints:
+        # Тестируем GET endpoints
+        for endpoint in get_endpoints:
             try:
                 response = await client.get(f"{base_url}{endpoint}")
                 if response.status_code == 200:
-                    print(f"✅ {endpoint} - OK")
+                    print(f"✅ GET {endpoint} - OK")
                     data = response.json()
                     print(f"   Данные: {json.dumps(data, indent=2, ensure_ascii=False)[:100]}...")
                 else:
-                    print(f"❌ {endpoint} - Error {response.status_code}")
+                    print(f"❌ GET {endpoint} - Error {response.status_code}")
             except Exception as e:
-                print(f"❌ {endpoint} - Exception: {e}")
+                print(f"❌ GET {endpoint} - Exception: {e}")
+        
+        # Тестируем POST telegram-webhook
+        print("\n🧪 Тестирование POST /telegram-webhook...")
+        test_update = {
+            "message": {
+                "chat": {"id": "123456789"},
+                "text": "/status"
+            }
+        }
+        
+        try:
+            response = await client.post(f"{base_url}/telegram-webhook", json=test_update)
+            if response.status_code == 200:
+                print("✅ POST /telegram-webhook - OK")
+                data = response.json()
+                print(f"   Ответ: {data}")
+            else:
+                print(f"❌ POST /telegram-webhook - Error {response.status_code}")
+        except Exception as e:
+            print(f"❌ POST /telegram-webhook - Exception: {e}")
 
 
 async def main():
