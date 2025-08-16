@@ -24,3 +24,6 @@ BINANCE_FEE = 0.1  # 0.1%
 TELEGRAM_BOT_TOKEN = config("TELEGRAM_BOT_TOKEN", default=None)
 TELEGRAM_CHAT_ID = config("TELEGRAM_CHAT_ID", default=None)
 TELEGRAM_ENABLED = config("TELEGRAM_ENABLED", default="False").lower() == "true"
+
+# Telegram бот (для команд)
+TELEGRAM_BOT_WEBHOOK_URL = config("TELEGRAM_BOT_WEBHOOK_URL", default=None)  # URL для webhook (опционально)

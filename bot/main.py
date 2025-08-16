@@ -36,6 +36,15 @@ async def startup():
     
     logger.info("Бот запущен.")
     
+    # Настраиваем Telegram webhook (если нужно)
+    try:
+        from bot.telegram_bot import setup_telegram_webhook
+        webhook_setup = await setup_telegram_webhook()
+        if webhook_setup:
+            logger.info("Telegram webhook настроен")
+    except Exception as e:
+        logger.error(f"Ошибка настройки Telegram webhook: {e}")
+    
     # Отправляем уведомление о запуске в Telegram
     try:
         await notify_status("Бот запущен и готов к работе", {
@@ -60,6 +69,26 @@ def get_balances():
     from bot.db import get_all_balances
     balances = get_all_balances()
     return {"balances": balances}
+
+
+@app.get("/profit")
+def get_profit():
+    """Получить статистику прибыли"""
+    from bot.db import get_profit_statistics
+    profit_stats = get_profit_statistics()
+    return {"profit": profit_stats}
+
+
+@app.post("/telegram-webhook")
+async def telegram_webhook(update: dict):
+    """Webhook для обработки команд от Telegram"""
+    from bot.telegram_bot import process_telegram_update
+    try:
+        success = await process_telegram_update(update)
+        return {"ok": success}
+    except Exception as e:
+        logger.error(f"Ошибка обработки Telegram webhook: {e}")
+        return {"ok": False, "error": str(e)}
 
 
 if __name__ == "__main__":
