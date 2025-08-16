@@ -61,6 +61,42 @@ def get_last_buy_price(exchange, symbol):
     return row[0] if row else None
 
 
+def has_previous_buy(exchange, symbol):
+    """Проверить, была ли покупка этой монеты ранее"""
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    cur.execute("""
+    SELECT COUNT(*) FROM trades 
+    WHERE exchange=? AND symbol=? AND side='buy'
+    """, (exchange, symbol))
+    count = cur.fetchone()[0]
+    conn.close()
+    return count > 0
+
+
+def get_unsold_quantity(exchange, symbol):
+    """Получить количество непроданной монеты (покупки минус продажи)"""
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    
+    # Суммируем покупки
+    cur.execute("""
+    SELECT COALESCE(SUM(qty), 0) FROM trades 
+    WHERE exchange=? AND symbol=? AND side='buy'
+    """, (exchange, symbol))
+    total_bought = cur.fetchone()[0]
+    
+    # Суммируем продажи
+    cur.execute("""
+    SELECT COALESCE(SUM(qty), 0) FROM trades 
+    WHERE exchange=? AND symbol=? AND side='sell'
+    """, (exchange, symbol))
+    total_sold = cur.fetchone()[0]
+    
+    conn.close()
+    return max(0, total_bought - total_sold)
+
+
 def save_trade(data: dict):
     try:
         conn = sqlite3.connect(DB_PATH)

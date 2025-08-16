@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request, HTTPException
 from loguru import logger
 from bot.config import WEBHOOK_SECRET, DEFAULT_EXCHANGE
-from bot.db import save_trade, get_last_buy_price
+from bot.db import save_trade, get_last_buy_price, has_previous_buy, get_unsold_quantity
 from bot.utils import generate_request_id, calculate_qty_by_precision
 from bot.exchange_selector import ExchangeSelector
 from bot.telegram_notifier import notify_trade, notify_error
@@ -45,6 +45,24 @@ async def webhook(request: Request):
         exchange = exchange_selector.get_exchange_by_name(exchange_name)
         price = exchange.get_last_price(symbol)
         logger.info(f"Используем биржу {exchange.name} для продажи по цене {price}")
+        
+        # Проверяем, была ли покупка этой монеты ранее
+        if not has_previous_buy(exchange.name, symbol):
+            error_msg = f"Нет истории покупки {symbol} на {exchange.name}. Продажа запрещена."
+            logger.warning(error_msg)
+            
+            # Отправляем уведомление об ошибке в Telegram
+            try:
+                await notify_error(error_msg, f"Попытка продажи без покупки {symbol}")
+            except Exception as telegram_error:
+                logger.error(f"Ошибка отправки Telegram уведомления: {telegram_error}")
+            
+            return {
+                "status": "Error",
+                "reason": "No purchase history",
+                "symbol": symbol,
+                "exchange": exchange.name
+            }
 
     # Получаем баланс для проверки лимита
     balance_usdt = exchange.get_balance("USDT")
@@ -71,13 +89,25 @@ async def webhook(request: Request):
         qty = calculate_qty_by_precision(usdt_amount, price, 6)
         market_unit = "quoteCoin" if exchange.name == "Bybit" else None
     else:
-        # При продаже используем весь доступный баланс монеты
+        # При продаже используем количество, которое можно продать (куплено - продано)
         coin_symbol = symbol.replace("USDT", "")
+        
+        # Получаем количество монет, которое можно продать
+        unsold_qty = get_unsold_quantity(exchange.name, symbol)
         coin_balance = exchange.get_balance(coin_symbol)
         
+        # Используем минимум из того, что есть на балансе и что было куплено
+        available_to_sell = min(coin_balance, unsold_qty)
+        
+        logger.info(f"Анализ продажи {symbol}: баланс={coin_balance}, куплено-продано={unsold_qty}, доступно={available_to_sell}")
+        
         # Проверяем, что есть монеты для продажи
-        if coin_balance <= 0:
-            error_msg = f"Нет {coin_symbol} для продажи. Баланс: {coin_balance}"
+        if available_to_sell <= 0:
+            if unsold_qty <= 0:
+                error_msg = f"Все {coin_symbol} уже проданы. Нечего продавать."
+            else:
+                error_msg = f"Нет {coin_symbol} на балансе для продажи. Баланс: {coin_balance}"
+            
             logger.warning(error_msg)
             
             # Отправляем уведомление об ошибке в Telegram
@@ -90,11 +120,13 @@ async def webhook(request: Request):
                 "status": "Error",
                 "reason": "No coins to sell",
                 "coin_symbol": coin_symbol,
-                "coin_balance": coin_balance
+                "coin_balance": coin_balance,
+                "unsold_qty": unsold_qty,
+                "available_to_sell": available_to_sell
             }
         
         # Проверяем минимальную сумму сделки (например, $1)
-        estimated_value = coin_balance * price
+        estimated_value = available_to_sell * price
         if estimated_value < 1.0:
             error_msg = f"Сумма продажи слишком мала: ${estimated_value:.4f} (мин. $1.00)"
             logger.warning(error_msg)
@@ -109,11 +141,11 @@ async def webhook(request: Request):
                 "status": "Error",
                 "reason": "Amount too small",
                 "coin_symbol": coin_symbol,
-                "coin_balance": coin_balance,
+                "available_to_sell": available_to_sell,
                 "estimated_value": estimated_value
             }
         
-        qty = coin_balance
+        qty = available_to_sell
         market_unit = "baseCoin" if exchange.name == "Bybit" else None
 
     # Генерируем request_id
