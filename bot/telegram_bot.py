@@ -177,6 +177,12 @@ class TelegramBot:
                 for coin, amount in binance_balances:
                     balance_text += f"   • {coin}: {amount:.6f}\n"
             
+            # Добавляем общий портфель в USDT
+            from bot.portfolio_calculator import portfolio_calculator
+            portfolio = portfolio_calculator.get_total_portfolio_usdt()
+            portfolio_text = portfolio_calculator.format_portfolio_text(portfolio)
+            balance_text += portfolio_text
+            
             await self.send_message(balance_text.strip())
             
         except Exception as e:
@@ -208,6 +214,12 @@ class TelegramBot:
 💸 <b>Общие комиссии:</b> ${stats['total_fees']:.4f}
 📊 <b>Объём торгов:</b> ${stats['total_volume']:.2f}
             """
+            
+            # Добавляем текущий портфель
+            from bot.portfolio_calculator import portfolio_calculator
+            portfolio = portfolio_calculator.get_total_portfolio_usdt()
+            portfolio_text = portfolio_calculator.format_portfolio_text(portfolio)
+            profit_text += portfolio_text
             
             await self.send_message(profit_text.strip())
             
