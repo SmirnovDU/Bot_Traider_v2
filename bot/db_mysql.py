@@ -96,7 +96,7 @@ def get_last_buy_price(exchange, symbol):
         """, (exchange, symbol))
         row = cur.fetchone()
         conn.close()
-        return row[0] if row else None
+        return float(row[0]) if row else None
     except Exception as e:
         logger.error(f"Ошибка получения последней цены покупки: {e}")
         return None
@@ -128,17 +128,17 @@ def get_unsold_quantity(exchange, symbol):
         SELECT COALESCE(SUM(qty), 0) FROM trades 
         WHERE exchange=%s AND symbol=%s AND side='buy'
         """, (exchange, symbol))
-        total_bought = cur.fetchone()[0] or 0
+        total_bought = float(cur.fetchone()[0] or 0)
         
         # Суммируем продажи
         cur.execute("""
         SELECT COALESCE(SUM(qty), 0) FROM trades 
         WHERE exchange=%s AND symbol=%s AND side='sell'
         """, (exchange, symbol))
-        total_sold = cur.fetchone()[0] or 0
+        total_sold = float(cur.fetchone()[0] or 0)
         
         conn.close()
-        return max(0, float(total_bought - total_sold))
+        return max(0.0, total_bought - total_sold)
     except Exception as e:
         logger.error(f"Ошибка получения непроданного количества: {e}")
         return 0.0
@@ -176,13 +176,14 @@ def get_exchange_with_coins(symbol):
 def save_trade(data: dict):
     """Сохранить сделку в БД"""
     try:
+        logger.info(f"Начинаем сохранение сделки: {data.get('request_id')}")
+        logger.debug(f"Данные для сохранения: {data}")
+        
         conn = get_connection()
         cur = conn.cursor()
-        cur.execute("""
-        INSERT INTO trades (request_id, timestamp, exchange, side, symbol, 
-                           price, qty, amount_usdt, fee, profit, profit_no_fees, balance_after, note)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """, (
+        
+        # Подробное логирование SQL запроса
+        sql_values = (
             data.get("request_id"),
             data.get("timestamp"),
             data.get("exchange"),
@@ -196,15 +197,31 @@ def save_trade(data: dict):
             data.get("profit_no_fees"),
             data.get("balance_after"),
             data.get("note")
-        ))
+        )
+        logger.debug(f"SQL значения: {sql_values}")
+        
+        cur.execute("""
+        INSERT INTO trades (request_id, timestamp, exchange, side, symbol, 
+                           price, qty, amount_usdt, fee, profit, profit_no_fees, balance_after, note)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, sql_values)
+        
+        affected_rows = cur.rowcount
+        logger.info(f"SQL выполнен, затронуто строк: {affected_rows}")
+        
         conn.commit()  # Критически важно!
+        logger.info(f"Транзакция зафиксирована для сделки: {data.get('request_id')}")
+        
         conn.close()
-        logger.info(f"Сделка сохранена: {data.get('request_id')}")
-    except mysql.connector.IntegrityError:
-        logger.warning(f"Сделка уже существует: {data.get('request_id')}")
+        logger.info(f"✅ Сделка успешно сохранена: {data.get('request_id')}")
+        
+    except mysql.connector.IntegrityError as e:
+        logger.warning(f"Сделка уже существует: {data.get('request_id')} - {e}")
     except Exception as e:
-        logger.error(f"Ошибка сохранения сделки: {e}")
+        logger.error(f"❌ Ошибка сохранения сделки: {e}")
         logger.error(f"Данные: {data}")
+        import traceback
+        logger.error(f"Трассировка: {traceback.format_exc()}")
 
 def get_balance(exchange, coin):
     """Получить баланс монеты на бирже"""

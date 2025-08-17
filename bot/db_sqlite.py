@@ -71,7 +71,7 @@ def get_last_buy_price(exchange, symbol):
     """, (exchange, symbol))
     row = cur.fetchone()
     conn.close()
-    return row[0] if row else None
+    return float(row[0]) if row else None
 
 
 def has_previous_buy(exchange, symbol):
