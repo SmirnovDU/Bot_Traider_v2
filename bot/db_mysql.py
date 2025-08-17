@@ -369,11 +369,11 @@ def get_profit_statistics_no_fees():
             "win_rate_no_fees": (profitable_trades_no_fees / total_trades_with_profit_no_fees * 100) if total_trades_with_profit_no_fees > 0 else 0
         }
     except Exception as e:
-        logger.error(f"Ошибка получения статистики прибыли: {e}")
+        logger.error(f"Ошибка получения статистики стратегии: {e}")
         return {
-            "total_profit": 0.0, "profitable_trades": 0, "losing_trades": 0,
-            "total_trades_with_profit": 0, "avg_profit": 0.0, "best_trade": 0.0,
-            "worst_trade": 0.0, "total_fees": 0.0, "total_volume": 0.0, "win_rate": 0.0
+            "total_profit_no_fees": 0.0, "profitable_trades_no_fees": 0, "losing_trades_no_fees": 0,
+            "total_trades_with_profit_no_fees": 0, "avg_profit_no_fees": 0.0, "best_trade_no_fees": 0.0,
+            "worst_trade_no_fees": 0.0, "win_rate_no_fees": 0.0
         }
 
 def get_trades_summary():
