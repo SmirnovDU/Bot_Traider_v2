@@ -57,8 +57,13 @@ def init_db():
         )
         """)
         
+        conn.commit()
         conn.close()
         logger.info("База данных MySQL инициализирована.")
+        
+        # Применяем миграции для добавления новых столбцов/индексов
+        from bot.migrations import apply_migrations
+        apply_migrations()
         
     except Exception as e:
         logger.error(f"Ошибка инициализации БД: {e}")

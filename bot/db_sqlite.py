@@ -37,6 +37,10 @@ def init_db():
     conn.commit()
     conn.close()
     logger.info("База данных инициализирована.")
+    
+    # Применяем миграции для добавления новых столбцов/индексов
+    from bot.migrations import apply_migrations
+    apply_migrations()
 
 
 def init_test_balances():
