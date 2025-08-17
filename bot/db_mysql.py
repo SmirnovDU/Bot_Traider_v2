@@ -197,6 +197,7 @@ def save_trade(data: dict):
             data.get("balance_after"),
             data.get("note")
         ))
+        conn.commit()  # Критически важно!
         conn.close()
         logger.info(f"Сделка сохранена: {data.get('request_id')}")
     except mysql.connector.IntegrityError:
@@ -229,6 +230,7 @@ def update_balance(exchange, coin, amount):
         VALUES (%s, %s, %s)
         ON DUPLICATE KEY UPDATE amount=%s
         """, (exchange, coin, amount, amount))
+        conn.commit()  # Критически важно!
         conn.close()
     except Exception as e:
         logger.error(f"Ошибка обновления баланса: {e}")
