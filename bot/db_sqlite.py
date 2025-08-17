@@ -198,7 +198,7 @@ def get_balance(exchange, coin):
     cur.execute("SELECT amount FROM balances WHERE exchange=? AND coin=?", (exchange, coin))
     row = cur.fetchone()
     conn.close()
-    return row[0] if row else 0.0
+    return float(row[0]) if row else 0.0
 
 
 def get_all_balances():

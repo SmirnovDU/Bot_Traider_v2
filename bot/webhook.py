@@ -34,6 +34,11 @@ async def webhook(request: Request):
     symbol = data.get("symbol", "BTCUSDT")
     usdt_amount = float(data.get("usdt_amount", 10))
 
+    # Генерируем уникальный request_id
+    request_id = generate_request_id(symbol, side)
+    
+    logger.info(f"Обработка сигнала: {request_id}")
+
     # Определяем биржу
     if side == "buy":
         # Для покупки выбираем биржу с лучшей ценой и достаточными средствами
@@ -96,6 +101,8 @@ async def webhook(request: Request):
         # Получаем количество монет, которое можно продать
         unsold_qty = get_unsold_quantity(exchange.name, symbol)
         coin_balance = exchange.get_balance(coin_symbol)
+        
+        logger.info(f"Детали для продажи {symbol}: баланс_монет={coin_balance:.6f}, непродано_по_истории={unsold_qty:.6f}")
         
         # Используем минимум из того, что есть на балансе и что было куплено
         available_to_sell = min(coin_balance, unsold_qty)

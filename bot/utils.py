@@ -3,8 +3,10 @@ from decimal import Decimal, ROUND_DOWN
 
 
 def generate_request_id(symbol, side):
-    now = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-    return f"{now}_{symbol}_{side}".upper()
+    # Добавляем микросекунды для уникальности
+    now = datetime.utcnow()
+    timestamp = now.strftime("%Y%m%d_%H%M%S") + f"_{now.microsecond:06d}"
+    return f"{timestamp}_{symbol}_{side}".upper()
 
 
 def calculate_qty_by_precision(usdt_amount, price, precision=6):
