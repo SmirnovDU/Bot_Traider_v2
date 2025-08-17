@@ -59,10 +59,13 @@ if sellSignal
 plotshape(buySignal,  title="Buy Signal",  text="BUY",  textcolor=color.white, style=shape.labelup,   size=size.normal, location=location.belowbar, color=color.green)
 plotshape(sellSignal, title="Sell Signal", text="SELL", textcolor=color.white, style=shape.labeldown, size=size.normal, location=location.abovebar, color=color.red)
 
+// Exchange selection
+exchange_name = input.string("bybit", "Exchange", options=["bybit", "binance"])
+
 // --- Условия для алертов ---
 alertcondition(buySignal,  title="Buy Webhook Signal",  
-     message='{"secret":"kljGCCKJS78ef6vLKGA88","action":"buy","symbol":"{{ticker}}","usdt_amount":"{{usdtAmount}}"}')
+     message='{"secret":"kljGCCKJS78ef6vLKGA88","action":"buy","symbol":"{{ticker}}","usdt_amount":"' + str.tostring(usdtAmount) + '","exchange":"' + exchange_name + '"}')
 
 alertcondition(sellSignal, title="Sell Webhook Signal", 
-     message='{"secret":"kljGCCKJS78ef6vLKGA88","action":"sell","symbol":"{{ticker}}","usdt_amount":"{{usdtAmount}}"}')
+     message='{"secret":"kljGCCKJS78ef6vLKGA88","action":"sell","symbol":"{{ticker}}","usdt_amount":"' + str.tostring(usdtAmount) + '","exchange":"' + exchange_name + '"}')
      

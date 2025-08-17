@@ -1,0 +1,153 @@
+//@version=6
+strategy("Improved EMA Cross with Filters v7", overlay=true)
+
+// Buy quantity
+qty = input.int(100000, "Buy quantity")
+
+// USDT Amount
+usdtAmount = input.float(10, "USDT per trade")
+
+// Backtest period
+testStartYear = input.int(2019, "Backtest Start Year")
+testStartMonth = input.int(1, "Backtest Start Month")
+testStartDay = input.int(1, "Backtest Start Day")
+testStartHour = input.int(0, "Backtest Start Hour")
+testStartMin = input.int(0, "Backtest Start Minute")
+testPeriodStart = timestamp(testStartYear, testStartMonth, testStartDay, testStartHour, testStartMin)
+
+testStopYear = input.int(2099, "Backtest Stop Year")
+testStopMonth = input.int(1, "Backtest Stop Month")
+testStopDay = input.int(30, "Backtest Stop Day")
+testPeriodStop = timestamp(testStopYear, testStopMonth, testStopDay, 0, 0)
+
+testPeriodBackground = input.bool(title="Color Background?", defval=true)
+testPeriodBackgroundColor = testPeriodBackground and time >= testPeriodStart and time <= testPeriodStop ? color.new(color.green, 90) : na
+
+bgcolor(testPeriodBackgroundColor)
+
+testPeriod() =>
+    time >= testPeriodStart and time <= testPeriodStop
+
+// EMA settings (увеличенные периоды для меньшего шума)
+ema1 = input.int(20, title="EMA Fast", minval=5, maxval=50)
+ema2 = input.int(50, title="EMA Slow", minval=10, maxval=200)
+
+expo = ta.ema(close, ema1)
+ma = ta.ema(close, ema2)
+
+plot(expo, color=color.blue, linewidth=2)
+plot(ma, color=color.orange, linewidth=2)
+
+// НОВЫЕ ФИЛЬТРЫ
+
+// 1. Фильтр силы тренда - RSI
+rsi_period = input.int(14, "RSI Period")
+rsi = ta.rsi(close, rsi_period)
+rsi_oversold = input.int(30, "RSI Oversold Level")
+rsi_overbought = input.int(70, "RSI Overbought Level")
+
+// 2. Фильтр волатильности - ATR
+atr_period = input.int(14, "ATR Period")
+atr = ta.atr(atr_period)
+atr_threshold = input.float(0.5, "Min ATR % for signals", minval=0.1, maxval=5.0) / 100
+
+// 3. Фильтр объема
+volume_ma = ta.sma(volume, 20)
+volume_filter = input.bool(true, "Use Volume Filter")
+
+// 4. Минимальная дистанция между EMA
+min_ema_distance = input.float(0.2, "Min EMA Distance %", minval=0.1, maxval=2.0) / 100
+
+// Расчет фильтров
+ema_distance = math.abs(expo - ma) / close
+is_trending = ema_distance > min_ema_distance
+is_volatile_enough = atr > (close * atr_threshold)
+volume_ok = not volume_filter or volume > volume_ma * 1.2
+
+// Основные условия (более строгие)
+longCondition = ta.crossover(expo, ma) and barstate.isconfirmed and testPeriod()
+shortCondition = ta.crossunder(expo, ma) and barstate.isconfirmed and testPeriod()
+
+// УЛУЧШЕННАЯ ЛОГИКА ВХОДА/ВЫХОДА
+
+// Состояние позиции
+inLong = strategy.position_size > 0
+
+// Покупка: все фильтры должны быть OK + RSI не перекуплен
+buySignal = longCondition and not inLong and 
+   is_trending and is_volatile_enough and volume_ok and
+   rsi < rsi_overbought and close > ma
+
+// УЛУЧШЕННАЯ ЛОГИКА ПРОДАЖИ - несколько вариантов:
+
+// Вариант 1: Только по пересечению EMA вниз + RSI перепродан
+sellSignal_ema = shortCondition and inLong
+
+// Вариант 2: Продажа по RSI перекуплености (тейк-профит)
+sellSignal_rsi = rsi > rsi_overbought and inLong and close < expo
+
+// Вариант 3: Стоп-лосс если цена сильно упала ниже медленной EMA
+sellSignal_stop = close < ma * 0.98 and inLong  // 2% стоп-лосс
+
+// Выбираем основной сигнал продажи
+sell_method = input.string("EMA Cross", "Sell Method", options=["EMA Cross", "RSI Overbought", "Combined"])
+
+sellSignal = switch sell_method
+    "EMA Cross" => sellSignal_ema
+    "RSI Overbought" => sellSignal_rsi or sellSignal_stop
+    "Combined" => sellSignal_ema or sellSignal_rsi or sellSignal_stop
+
+// Дополнительная задержка для продажи (избегаем ложных сигналов)
+var int bars_since_buy = 0
+if buySignal
+    bars_since_buy := 0
+else
+    bars_since_buy += 1
+
+min_hold_bars = input.int(3, "Min bars to hold position")
+can_sell = bars_since_buy >= min_hold_bars
+
+// Финальные сигналы
+final_buy = buySignal
+final_sell = sellSignal and can_sell
+
+if final_buy
+    strategy.entry("Buy", strategy.long, qty=qty)
+
+if final_sell
+    strategy.close("Buy")
+
+// Метки на графике
+plotshape(final_buy, title="Buy Signal", text="BUY", textcolor=color.white, style=shape.labelup, size=size.normal, location=location.belowbar, color=color.green)
+plotshape(final_sell, title="Sell Signal", text="SELL", textcolor=color.white, style=shape.labeldown, size=size.normal, location=location.abovebar, color=color.red)
+
+// Дополнительные индикаторы
+plot(rsi, "RSI", color=color.purple)
+hline(rsi_overbought, "RSI Overbought", color=color.red, linestyle=hline.style_dashed)
+hline(rsi_oversold, "RSI Oversold", color=color.green, linestyle=hline.style_dashed)
+
+// Exchange selection
+exchange_name = input.string("bybit", "Exchange", options=["bybit", "binance"])
+
+// --- Условия для алертов ---
+alertcondition(final_buy, title="Buy Webhook Signal",
+    message='{"secret":"kljGCCKJS78ef6vLKGA88","action":"buy","symbol":"{{ticker}}","usdt_amount":"' + str.tostring(usdtAmount) + '","exchange":"' + exchange_name + '"}')
+
+alertcondition(final_sell, title="Sell Webhook Signal",
+    message='{"secret":"kljGCCKJS78ef6vLKGA88","action":"sell","symbol":"{{ticker}}","usdt_amount":"' + str.tostring(usdtAmount) + '","exchange":"' + exchange_name + '"}')
+
+// Информационная таблица
+if barstate.islast
+    var table infoTable = table.new(position.top_right, 2, 8, bgcolor=color.white, border_width=1)
+    table.cell(infoTable, 0, 0, "Metric", text_color=color.black, bgcolor=color.gray)
+    table.cell(infoTable, 1, 0, "Value", text_color=color.black, bgcolor=color.gray)
+    table.cell(infoTable, 0, 1, "RSI", text_color=color.black)
+    table.cell(infoTable, 1, 1, str.tostring(rsi, "#.##"), text_color=color.black)
+    table.cell(infoTable, 0, 2, "EMA Distance", text_color=color.black)
+    table.cell(infoTable, 1, 2, str.tostring(ema_distance * 100, "#.##") + "%", text_color=color.black)
+    table.cell(infoTable, 0, 3, "ATR %", text_color=color.black)
+    table.cell(infoTable, 1, 3, str.tostring(atr/close * 100, "#.##") + "%", text_color=color.black)
+    table.cell(infoTable, 0, 4, "Position", text_color=color.black)
+    table.cell(infoTable, 1, 4, inLong ? "LONG" : "FLAT", text_color=inLong ? color.green : color.red)
+    table.cell(infoTable, 0, 5, "Bars Held", text_color=color.black)
+    table.cell(infoTable, 1, 5, str.tostring(bars_since_buy), text_color=color.black)

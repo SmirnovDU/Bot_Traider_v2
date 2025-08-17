@@ -33,26 +33,46 @@ async def webhook(request: Request):
 
     symbol = data.get("symbol", "BTCUSDT")
     usdt_amount = float(data.get("usdt_amount", 10))
+    exchange_name = data.get("exchange", "bybit").lower()  # Берем биржу из сигнала
 
     # Генерируем уникальный request_id
     request_id = generate_request_id(symbol, side)
     
-    logger.info(f"Обработка сигнала: {request_id}")
+    logger.info(f"Обработка сигнала: {request_id} на бирже {exchange_name}")
 
-    # Определяем биржу
-    if side == "buy":
-        # Для покупки выбираем биржу с лучшей ценой и достаточными средствами
-        exchange, price = exchange_selector.get_best_price_exchange(symbol, usdt_amount)
-        logger.info(f"Выбрана биржа {exchange.name} для покупки по цене {price}")
-    else:
-        # Для продажи находим биржу с максимальным количеством монет
-        exchange_with_coins = get_exchange_with_coins(symbol)
+    # Получаем биржу из сигнала (без сравнения цен)
+    try:
+        exchange = exchange_selector.get_exchange_by_name(exchange_name)
+        price = exchange.get_last_price(symbol)
+        logger.info(f"🚀 Быстрое выполнение на {exchange.name}: {side} {symbol} по цене {price}")
+    except Exception as e:
+        error_msg = f"Ошибка получения биржи '{exchange_name}': {e}"
+        logger.error(error_msg)
         
-        if not exchange_with_coins:
-            error_msg = f"Нет непроданных {symbol} ни на одной бирже. Продажа невозможна."
+        try:
+            await notify_error(error_msg, f"Ошибка биржи для {side} {symbol}")
+        except Exception as telegram_error:
+            logger.error(f"Ошибка отправки Telegram уведомления: {telegram_error}")
+        
+        return {
+            "status": "Error",
+            "reason": "Invalid exchange",
+            "exchange": exchange_name,
+            "symbol": symbol
+        }
+
+    # Для продажи проверяем наличие монет на указанной бирже
+    if side == "sell":
+        coin_symbol = symbol.replace("USDT", "")
+        coin_balance = exchange.get_balance(coin_symbol)
+        unsold_qty = get_unsold_quantity(exchange.name, symbol)
+        
+        logger.info(f"Проверка продажи {symbol} на {exchange.name}: баланс={coin_balance:.6f}, непродано={unsold_qty:.6f}")
+        
+        if coin_balance <= 0 or unsold_qty <= 0:
+            error_msg = f"Нет {coin_symbol} для продажи на {exchange.name}. Баланс: {coin_balance:.6f}, непродано: {unsold_qty:.6f}"
             logger.warning(error_msg)
             
-            # Отправляем уведомление об ошибке в Telegram
             try:
                 await notify_error(error_msg, f"Попытка продажи без монет {symbol}")
             except Exception as telegram_error:
@@ -62,13 +82,10 @@ async def webhook(request: Request):
                 "status": "Error",
                 "reason": "No coins to sell",
                 "symbol": symbol,
-                "searched_exchanges": ["Bybit", "Binance"]
+                "exchange": exchange.name,
+                "balance": coin_balance,
+                "unsold": unsold_qty
             }
-        
-        # Используем биржу где есть монеты
-        exchange = exchange_selector.get_exchange_by_name(exchange_with_coins.lower())
-        price = exchange.get_last_price(symbol)
-        logger.info(f"Найдены монеты {symbol} на бирже {exchange.name}, продаём по цене {price}")
 
     # Получаем баланс для проверки лимита
     balance_usdt = exchange.get_balance("USDT")
