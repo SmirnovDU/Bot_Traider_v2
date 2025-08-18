@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from bot.db import get_all_balances, save_trade, update_balance
 from bot.exchange_selector import ExchangeSelector
 from bot.utils import generate_request_id, calculate_fee_for_sell
-
+from bot.config import TEST_MODE
 
 class MassOperations:
     """Класс для выполнения массовых операций"""
@@ -128,14 +128,7 @@ class MassOperations:
                     "exchange": exchange_name
                 }
             
-            # Получаем биржу
-            exchange = self.exchange_selector.get_exchange_by_name(exchange_name)
             symbol = f"{coin}USDT"
-            
-            # Получаем текущую цену
-            price = exchange.get_last_price(symbol)
-            
-            # Рассчитываем количество для продажи
             qty = amount
             
             # Проверяем минимальное количество
@@ -151,17 +144,31 @@ class MassOperations:
             # Генерируем request_id
             request_id = generate_request_id(symbol, "sell")
             
-            logger.info(f"Продаём {qty} {coin} по цене {price} на {exchange_name}")
-            
-            # Выполняем продажу
-            result = exchange.place_order(symbol, "sell", qty, price)
-            
-            if result.get("success"):
-                # Рассчитываем комиссию и прибыль
-                fee = calculate_fee_for_sell(qty, price, result.get("balance_after", 0))
+            if TEST_MODE:
+                # ТЕСТОВЫЙ РЕЖИМ - работаем только с БД
+                logger.info(f"🧪 ТЕСТ: Продаём {qty} {coin} на {exchange_name}")
                 
-                # Получаем баланс после операции
-                balance_after = exchange.get_balance("USDT")
+                # Используем фиксированную цену для тестового режима
+                if coin == "BTC":
+                    price = 45000.0
+                elif coin == "ETH":
+                    price = 3000.0
+                elif coin == "ADA":
+                    price = 0.5
+                elif coin == "DOT":
+                    price = 7.0
+                else:
+                    price = 1.0  # Цена по умолчанию для других монет
+                
+                # Рассчитываем комиссию (0.1% от суммы)
+                fee = (qty * price) * 0.001
+                
+                # Получаем текущий баланс USDT из БД
+                from bot.db import get_balance
+                current_usdt_balance = get_balance(exchange_name, "USDT")
+                
+                # Рассчитываем новый баланс USDT
+                new_usdt_balance = current_usdt_balance + (qty * price) - fee
                 
                 # Рассчитываем прибыль (для массовой продажи считаем как продажу по текущей цене)
                 profit = (qty * price) - fee
@@ -180,14 +187,16 @@ class MassOperations:
                     "fee": fee,
                     "profit": profit,
                     "profit_no_fees": profit_no_fees,
-                    "balance_after": balance_after,
-                    "note": f"Массовая продажа - {result.get('note', '')}"
+                    "balance_after": new_usdt_balance,
+                    "note": "Массовая продажа (ТЕСТОВЫЙ РЕЖИМ)"
                 }
                 save_trade(trade_data)
                 
                 # Обновляем баланс в БД
                 update_balance(exchange_name, coin, 0.0)  # Обнуляем баланс монеты
-                update_balance(exchange_name, "USDT", balance_after)  # Обновляем USDT
+                update_balance(exchange_name, "USDT", new_usdt_balance)  # Обновляем USDT
+                
+                logger.info(f"🧪 ТЕСТ: Продажа {coin} завершена. Прибыль: ${profit:.4f}")
                 
                 return {
                     "success": True,
@@ -200,14 +209,69 @@ class MassOperations:
                     "request_id": request_id
                 }
             else:
-                return {
-                    "success": False,
-                    "error": result.get("error", "Неизвестная ошибка"),
-                    "coin": coin,
-                    "exchange": exchange_name,
-                    "qty": qty,
-                    "price": price
-                }
+                # БОЕВОЙ РЕЖИМ - работаем с реальными биржами
+                exchange = self.exchange_selector.get_exchange_by_name(exchange_name)
+                
+                # Получаем текущую цену
+                price = exchange.get_last_price(symbol)
+                
+                logger.info(f"Продаём {qty} {coin} по цене {price} на {exchange_name}")
+                
+                # Выполняем продажу
+                result = exchange.place_order(symbol, "sell", qty, price)
+                
+                if result.get("success"):
+                    # Рассчитываем комиссию и прибыль
+                    fee = calculate_fee_for_sell(qty, price, result.get("balance_after", 0))
+                    
+                    # Получаем баланс после операции
+                    balance_after = exchange.get_balance("USDT")
+                    
+                    # Рассчитываем прибыль (для массовой продажи считаем как продажу по текущей цене)
+                    profit = (qty * price) - fee
+                    profit_no_fees = qty * price  # Прибыль без комиссий
+                    
+                    # Сохраняем сделку
+                    trade_data = {
+                        "request_id": request_id,
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "exchange": exchange_name,
+                        "side": "sell",
+                        "symbol": symbol,
+                        "price": price,
+                        "qty": qty,
+                        "amount_usdt": qty * price,
+                        "fee": fee,
+                        "profit": profit,
+                        "profit_no_fees": profit_no_fees,
+                        "balance_after": balance_after,
+                        "note": f"Массовая продажа - {result.get('note', '')}"
+                    }
+                    save_trade(trade_data)
+                    
+                    # Обновляем баланс в БД
+                    update_balance(exchange_name, coin, 0.0)  # Обнуляем баланс монеты
+                    update_balance(exchange_name, "USDT", balance_after)  # Обновляем USDT
+                    
+                    return {
+                        "success": True,
+                        "coin": coin,
+                        "exchange": exchange_name,
+                        "qty": qty,
+                        "price": price,
+                        "profit": profit,
+                        "fee": fee,
+                        "request_id": request_id
+                    }
+                else:
+                    return {
+                        "success": False,
+                        "error": result.get("error", "Неизвестная ошибка"),
+                        "coin": coin,
+                        "exchange": exchange_name,
+                        "qty": qty,
+                        "price": price
+                    }
                 
         except Exception as e:
             logger.error(f"Ошибка продажи {balance.get('coin', 'unknown')}: {e}")
