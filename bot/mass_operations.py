@@ -145,20 +145,30 @@ class MassOperations:
             request_id = generate_request_id(symbol, "sell")
             
             if TEST_MODE:
-                # ТЕСТОВЫЙ РЕЖИМ - работаем только с БД
+                # ТЕСТОВЫЙ РЕЖИМ - получаем реальную цену с биржи, но не делаем реальные сделки
                 logger.info(f"🧪 ТЕСТ: Продаём {qty} {coin} на {exchange_name}")
                 
-                # Используем фиксированную цену для тестового режима
-                if coin == "BTC":
-                    price = 45000.0
-                elif coin == "ETH":
-                    price = 3000.0
-                elif coin == "ADA":
-                    price = 0.5
-                elif coin == "DOT":
-                    price = 7.0
-                else:
-                    price = 1.0  # Цена по умолчанию для других монет
+                # Получаем биржу для запроса цены
+                exchange = self.exchange_selector.get_exchange_by_name(exchange_name)
+                
+                # Получаем реальную цену с биржи
+                try:
+                    price = exchange.get_last_price(symbol)
+                    logger.info(f"🧪 ТЕСТ: Получена цена {coin} с {exchange_name}: ${price}")
+                except Exception as e:
+                    logger.warning(f"🧪 ТЕСТ: Не удалось получить цену {coin} с {exchange_name}: {e}")
+                    # Используем фиксированную цену как fallback
+                    if coin == "BTC":
+                        price = 45000.0
+                    elif coin == "ETH":
+                        price = 3000.0
+                    elif coin == "ADA":
+                        price = 0.5
+                    elif coin == "DOT":
+                        price = 7.0
+                    else:
+                        price = 1.0
+                    logger.info(f"🧪 ТЕСТ: Используем фиксированную цену для {coin}: ${price}")
                 
                 # Рассчитываем комиссию (0.1% от суммы)
                 fee = (qty * price) * 0.001
@@ -167,10 +177,10 @@ class MassOperations:
                 from bot.db import get_balance
                 current_usdt_balance = get_balance(exchange_name, "USDT")
                 
-                # Рассчитываем новый баланс USDT
+                # Рассчитываем новый баланс USDT (реальная цена с биржи)
                 new_usdt_balance = current_usdt_balance + (qty * price) - fee
                 
-                # Рассчитываем прибыль (для массовой продажи считаем как продажу по текущей цене)
+                # Рассчитываем прибыль по реальной цене с биржи
                 profit = (qty * price) - fee
                 profit_no_fees = qty * price  # Прибыль без комиссий
                 
@@ -188,7 +198,7 @@ class MassOperations:
                     "profit": profit,
                     "profit_no_fees": profit_no_fees,
                     "balance_after": new_usdt_balance,
-                    "note": "Массовая продажа (ТЕСТОВЫЙ РЕЖИМ)"
+                    "note": f"Массовая продажа (ТЕСТОВЫЙ РЕЖИМ) - цена с {exchange_name}"
                 }
                 save_trade(trade_data)
                 
