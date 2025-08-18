@@ -14,7 +14,7 @@ exchange_selector = ExchangeSelector()
 @router.post("/webhook")
 async def webhook(request: Request):
     try:
-        data = await request.json()
+    data = await request.json()
     except Exception as e:
         body = await request.body()
         logger.error(f"Ошибка парсинга JSON: {e}")
@@ -202,23 +202,23 @@ async def webhook(request: Request):
                 logger.info(f"Прибыль БЕЗ комиссий: ${profit_no_fees:.4f}, С комиссиями: ${profit:.4f}, Комиссия: ${fee:.4f}")
         # Для покупок (side == "buy") profit остается None
 
-        # Сохраняем сделку
-        trade_data = {
+    # Сохраняем сделку
+    trade_data = {
             "request_id": request_id,
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "exchange": exchange.name,
-            "side": side,
-            "symbol": symbol,
-            "price": price,
-            "qty": qty,
+        "exchange": exchange.name,
+        "side": side,
+        "symbol": symbol,
+        "price": price,
+        "qty": qty,
             "amount_usdt": usdt_amount if side == "buy" else qty * price,
-            "fee": fee,
-            "profit": profit,
+        "fee": fee,
+        "profit": profit,
             "profit_no_fees": profit_no_fees,
-            "balance_after": balance_after,
-            "note": str(result)
-        }
-        save_trade(trade_data)
+        "balance_after": balance_after,
+        "note": str(result)
+    }
+    save_trade(trade_data)
 
         logger.info(f"Сделка выполнена: {request_id} - {side} {qty} {symbol} по {price}")
 

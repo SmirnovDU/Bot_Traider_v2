@@ -78,6 +78,12 @@ class TelegramBot:
                 await self.handle_strategy()
             elif command == "/summary":
                 await self.handle_summary()
+            elif command == "/sellall":
+                await self.handle_sell_all()
+            elif command == "/sellallbinance":
+                await self.handle_sell_all_binance()
+            elif command == "/sellallbybit":
+                await self.handle_sell_all_bybit()
             else:
                 await self.handle_unknown_command(command)
             
@@ -98,10 +104,17 @@ class TelegramBot:
 📈 <b>/profit</b> - Статистика прибыли и убытков
 🧪 <b>/strategy</b> - Анализ стратегии (прибыль БЕЗ комиссий)
 📋 <b>/summary</b> - Краткая сводка по сделкам
+
+🔄 <b>Массовые операции:</b>
+💸 <b>/sellall</b> - Продать все монеты на всех биржах
+💸 <b>/sellallbinance</b> - Продать все монеты на Binance
+💸 <b>/sellallbybit</b> - Продать все монеты на Bybit
+
 ❓ <b>/help</b> - Показать это сообщение
 
 🔸 Бот автоматически отправляет уведомления о сделках и ошибках.
 🔸 Все команды работают только для авторизованного чата.
+⚠️ <b>Внимание:</b> Массовые операции необратимы!
         """
         await self.send_message(help_text.strip())
     
@@ -313,6 +326,97 @@ class TelegramBot:
         except Exception as e:
             logger.error(f"Ошибка в handle_summary: {e}")
             await self.send_message(f"🚨 Ошибка получения сводки: {str(e)}")
+    
+    async def handle_sell_all(self):
+        """Обработка команды /sellall - продажа всех монет на всех биржах"""
+        try:
+            await self.send_message("🔄 Начинаем массовую продажу всех монет на всех биржах...")
+            
+            from bot.mass_operations import sell_all_coins
+            result = await sell_all_coins()
+            
+            if result['success']:
+                message = f"✅ {result['message']}\n\n"
+                message += f"💰 Общая прибыль: ${result['total_profit']:.4f}\n"
+                message += f"✅ Успешных сделок: {result['successful_trades']}\n"
+                message += f"❌ Неудачных сделок: {result['failed_trades']}\n\n"
+                
+                if result['trades']:
+                    message += "📋 Детали сделок:\n"
+                    for trade in result['trades'][:5]:  # Показываем первые 5
+                        message += f"• {trade['coin']} ({trade['exchange']}): "
+                        message += f"${trade['profit']:.4f}\n"
+                    
+                    if len(result['trades']) > 5:
+                        message += f"... и ещё {len(result['trades']) - 5} сделок"
+            else:
+                message = f"❌ Ошибка массовой продажи: {result.get('error', 'Неизвестная ошибка')}"
+            
+            await self.send_message(message)
+            
+        except Exception as e:
+            logger.error(f"Ошибка в handle_sell_all: {e}")
+            await self.send_message(f"🚨 Ошибка массовой продажи: {str(e)}")
+    
+    async def handle_sell_all_binance(self):
+        """Обработка команды /sellallbinance - продажа всех монет на Binance"""
+        try:
+            await self.send_message("🔄 Начинаем массовую продажу всех монет на Binance...")
+            
+            from bot.mass_operations import sell_all_binance
+            result = await sell_all_binance()
+            
+            if result['success']:
+                message = f"✅ {result['message']}\n\n"
+                message += f"💰 Общая прибыль: ${result['total_profit']:.4f}\n"
+                message += f"✅ Успешных сделок: {result['successful_trades']}\n"
+                message += f"❌ Неудачных сделок: {result['failed_trades']}\n\n"
+                
+                if result['trades']:
+                    message += "📋 Детали сделок:\n"
+                    for trade in result['trades'][:5]:  # Показываем первые 5
+                        message += f"• {trade['coin']}: ${trade['profit']:.4f}\n"
+                    
+                    if len(result['trades']) > 5:
+                        message += f"... и ещё {len(result['trades']) - 5} сделок"
+            else:
+                message = f"❌ Ошибка массовой продажи на Binance: {result.get('error', 'Неизвестная ошибка')}"
+            
+            await self.send_message(message)
+            
+        except Exception as e:
+            logger.error(f"Ошибка в handle_sell_all_binance: {e}")
+            await self.send_message(f"🚨 Ошибка массовой продажи на Binance: {str(e)}")
+    
+    async def handle_sell_all_bybit(self):
+        """Обработка команды /sellallbybit - продажа всех монет на Bybit"""
+        try:
+            await self.send_message("🔄 Начинаем массовую продажу всех монет на Bybit...")
+            
+            from bot.mass_operations import sell_all_bybit
+            result = await sell_all_bybit()
+            
+            if result['success']:
+                message = f"✅ {result['message']}\n\n"
+                message += f"💰 Общая прибыль: ${result['total_profit']:.4f}\n"
+                message += f"✅ Успешных сделок: {result['successful_trades']}\n"
+                message += f"❌ Неудачных сделок: {result['failed_trades']}\n\n"
+                
+                if result['trades']:
+                    message += "📋 Детали сделок:\n"
+                    for trade in result['trades'][:5]:  # Показываем первые 5
+                        message += f"• {trade['coin']}: ${trade['profit']:.4f}\n"
+                    
+                    if len(result['trades']) > 5:
+                        message += f"... и ещё {len(result['trades']) - 5} сделок"
+            else:
+                message = f"❌ Ошибка массовой продажи на Bybit: {result.get('error', 'Неизвестная ошибка')}"
+            
+            await self.send_message(message)
+            
+        except Exception as e:
+            logger.error(f"Ошибка в handle_sell_all_bybit: {e}")
+            await self.send_message(f"🚨 Ошибка массовой продажи на Bybit: {str(e)}")
     
     async def handle_unknown_command(self, command: str):
         """Обработка неизвестной команды"""

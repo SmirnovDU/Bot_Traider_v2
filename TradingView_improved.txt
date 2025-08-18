@@ -131,10 +131,10 @@ exchange_name = input.string("bybit", "Exchange", options=["bybit", "binance"])
 
 // --- Условия для алертов ---
 alertcondition(final_buy, title="Buy Webhook Signal",
-    message='{"secret":"kljGCCKJS78ef6vLKGA88","action":"buy","symbol":"{{ticker}}","usdt_amount":"' + str.tostring(usdtAmount) + '","exchange":"' + exchange_name + '"}')
+    message='{"secret":"kljGCCKJS78ef6vLKGA88","action":"buy","symbol":"{{ticker}}","usdt_amount":"10","exchange":"binance"}')
 
 alertcondition(final_sell, title="Sell Webhook Signal",
-    message='{"secret":"kljGCCKJS78ef6vLKGA88","action":"sell","symbol":"{{ticker}}","usdt_amount":"' + str.tostring(usdtAmount) + '","exchange":"' + exchange_name + '"}')
+    message='{"secret":"kljGCCKJS78ef6vLKGA88","action":"sell","symbol":"{{ticker}}","usdt_amount":"10","exchange":"binance"}')
 
 // Информационная таблица
 if barstate.islast
