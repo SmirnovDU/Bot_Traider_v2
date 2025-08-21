@@ -1,5 +1,5 @@
 //@version=6
-strategy("Improved EMA Cross with Filters v7", overlay=true)
+strategy("Improved EMA Cross with Soft Filters v8", overlay=true)
 
 // Buy quantity
 qty = input.int(100000, "Buy quantity")
@@ -38,33 +38,33 @@ ma = ta.ema(close, ema2)
 plot(expo, color=color.blue, linewidth=2)
 plot(ma, color=color.orange, linewidth=2)
 
-// НОВЫЕ ФИЛЬТРЫ
+// МЯГКИЕ ФИЛЬТРЫ (менее строгие)
 
-// 1. Фильтр силы тренда - RSI
+// 1. Фильтр силы тренда - RSI (более мягкие уровни)
 rsi_period = input.int(14, "RSI Period")
 rsi = ta.rsi(close, rsi_period)
-rsi_oversold = input.int(25, "RSI Oversold Level")
-rsi_overbought = input.int(75, "RSI Overbought Level")
+rsi_oversold = input.int(25, "RSI Oversold Level")  // Было 30
+rsi_overbought = input.int(75, "RSI Overbought Level")  // Было 70
 
-// 2. Фильтр волатильности - ATR
+// 2. Фильтр волатильности - ATR (более мягкий)
 atr_period = input.int(14, "ATR Period")
 atr = ta.atr(atr_period)
-atr_threshold = input.float(0.2, "Min ATR % for signals", minval=0.05, maxval=2.0) / 100
+atr_threshold = input.float(0.2, "Min ATR % for signals", minval=0.05, maxval=2.0) / 100  // Было 0.5
 
-// 3. Фильтр объема
+// 3. Фильтр объема (опциональный)
 volume_ma = ta.sma(volume, 20)
-volume_filter = input.bool(false, "Use Volume Filter")
+volume_filter = input.bool(false, "Use Volume Filter")  // По умолчанию выключен
 
-// 4. Минимальная дистанция между EMA
-min_ema_distance = input.float(0.1, "Min EMA Distance %", minval=0.05, maxval=1.0) / 100
+// 4. Минимальная дистанция между EMA (более мягкая)
+min_ema_distance = input.float(0.1, "Min EMA Distance %", minval=0.05, maxval=1.0) / 100  // Было 0.2
 
 // Расчет фильтров
 ema_distance = math.abs(expo - ma) / close
 is_trending = ema_distance > min_ema_distance
 is_volatile_enough = atr > (close * atr_threshold)
-volume_ok = not volume_filter or volume > volume_ma * 1.1
+volume_ok = not volume_filter or volume > volume_ma * 1.1  // Было 1.2
 
-// Основные условия (более строгие)
+// Основные условия (как в оригинале)
 longCondition = ta.crossover(expo, ma) and barstate.isconfirmed and testPeriod()
 shortCondition = ta.crossunder(expo, ma) and barstate.isconfirmed and testPeriod()
 
@@ -73,21 +73,21 @@ shortCondition = ta.crossunder(expo, ma) and barstate.isconfirmed and testPeriod
 // Состояние позиции
 inLong = strategy.position_size > 0
 
-// Покупка: все фильтры должны быть OK + RSI не перекуплен
+// Покупка: основные фильтры + мягкие условия
 buySignal = longCondition and not inLong and 
    is_trending and is_volatile_enough and volume_ok and
    rsi < rsi_overbought and close > ma
 
 // УЛУЧШЕННАЯ ЛОГИКА ПРОДАЖИ - несколько вариантов:
 
-// Вариант 1: Только по пересечению EMA вниз + RSI перепродан
+// Вариант 1: Только по пересечению EMA вниз
 sellSignal_ema = shortCondition and inLong
 
 // Вариант 2: Продажа по RSI перекуплености (тейк-профит)
 sellSignal_rsi = rsi > rsi_overbought and inLong and close < expo
 
 // Вариант 3: Стоп-лосс если цена сильно упала ниже медленной EMA
-sellSignal_stop = close < ma * 0.97 and inLong  // 3% стоп-лосс
+sellSignal_stop = close < ma * 0.97 and inLong  // 3% стоп-лосс (было 2%)
 
 // Выбираем основной сигнал продажи
 sell_method = input.string("EMA Cross", "Sell Method", options=["EMA Cross", "RSI Overbought", "Combined"])
@@ -97,14 +97,14 @@ sellSignal = switch sell_method
     "RSI Overbought" => sellSignal_rsi or sellSignal_stop
     "Combined" => sellSignal_ema or sellSignal_rsi or sellSignal_stop
 
-// Дополнительная задержка для продажи (избегаем ложных сигналов)
+// Дополнительная задержка для продажи (более короткая)
 var int bars_since_buy = 0
 if buySignal
     bars_since_buy := 0
 else
     bars_since_buy += 1
 
-min_hold_bars = input.int(2, "Min bars to hold position")
+min_hold_bars = input.int(2, "Min bars to hold position")  // Было 3
 can_sell = bars_since_buy >= min_hold_bars
 
 // Финальные сигналы
@@ -131,10 +131,10 @@ exchange_name = input.string("bybit", "Exchange", options=["bybit", "binance"])
 
 // --- Условия для алертов ---
 alertcondition(final_buy, title="Buy Webhook Signal",
-    message='{"secret":"kljGCCKJS78ef6vLKGA88","action":"buy","symbol":"{{ticker}}","usdt_amount":"10","exchange":"binance"}')
+    message='{"secret":"kljGCCKJS78ef6vLKGA88","action":"buy","symbol":"{{ticker}}","usdt_amount":"10","exchange":"bybit"}')
 
 alertcondition(final_sell, title="Sell Webhook Signal",
-    message='{"secret":"kljGCCKJS78ef6vLKGA88","action":"sell","symbol":"{{ticker}}","usdt_amount":"10","exchange":"binance"}')
+    message='{"secret":"kljGCCKJS78ef6vLKGA88","action":"sell","symbol":"{{ticker}}","usdt_amount":"10","exchange":"bybit"}')
 
 // Информационная таблица
 if barstate.islast

@@ -1,0 +1,137 @@
+//@version=6
+strategy("Quality EMA Cross - Buy Low Sell High v9", overlay=true)
+
+// Buy quantity
+qty = input.int(100000, "Buy quantity")
+usdtAmount = input.float(10, "USDT per trade")
+
+// Backtest period
+testStartYear = input.int(2019, "Backtest Start Year")
+testStartMonth = input.int(1, "Backtest Start Month")
+testStartDay = input.int(1, "Backtest Start Day")
+testStartHour = input.int(0, "Backtest Start Hour")
+testStartMin = input.int(0, "Backtest Start Minute")
+testPeriodStart = timestamp(testStartYear, testStartMonth, testStartDay, testStartHour, testStartMin)
+
+testStopYear = input.int(2099, "Backtest Stop Year")
+testStopMonth = input.int(1, "Backtest Stop Month")
+testStopDay = input.int(30, "Backtest Stop Day")
+testPeriodStop = timestamp(testStopYear, testStopMonth, testStopDay, 0, 0)
+
+testPeriodBackground = input.bool(title="Color Background?", defval=true)
+testPeriodBackgroundColor = testPeriodBackground and time >= testPeriodStart and time <= testPeriodStop ? color.new(color.green, 90) : na
+
+bgcolor(testPeriodBackgroundColor)
+
+testPeriod() =>
+    time >= testPeriodStart and time <= testPeriodStop
+
+// EMA settings - классические периоды
+ema1 = input.int(12, title="EMA Fast", minval=5, maxval=30)
+ema2 = input.int(26, title="EMA Slow", minval=10, maxval=50)
+
+expo = ta.ema(close, ema1)
+ma = ta.ema(close, ema2)
+
+plot(expo, color=color.blue, linewidth=2)
+plot(ma, color=color.orange, linewidth=2)
+
+// RSI для определения перекупленности/перепроданности
+rsi_period = input.int(14, "RSI Period")
+rsi = ta.rsi(close, rsi_period)
+rsi_oversold = input.int(30, "RSI Oversold Level")
+rsi_overbought = input.int(70, "RSI Overbought Level")
+
+// ATR для волатильности
+atr_period = input.int(14, "ATR Period")
+atr = ta.atr(atr_period)
+
+// Дополнительные индикаторы для качества сигналов
+// MACD для подтверждения тренда
+[macd_line, signal_line, hist] = ta.macd(close, 12, 26, 9)
+macd_bullish = macd_line > signal_line
+macd_bearish = macd_line < signal_line
+
+// Bollinger Bands для определения уровней
+bb_length = input.int(20, "Bollinger Bands Length")
+bb_mult = input.float(2.0, "Bollinger Bands Multiplier")
+[bb_upper, bb_middle, bb_lower] = ta.bb(close, bb_length, bb_mult)
+
+// Условия для качественных сигналов
+
+// ПОКУПКА (Buy Low):
+// 1. EMA пересечение вверх
+// 2. RSI не перекуплен (ниже 70)
+// 3. Цена выше медленной EMA (восходящий тренд)
+// 4. MACD бычий (подтверждение тренда)
+// 5. Цена не слишком близко к верхней полосе Боллинджера
+longCondition = ta.crossover(expo, ma) and barstate.isconfirmed and testPeriod()
+buySignal = longCondition and 
+   rsi < rsi_overbought and 
+   close > ma and 
+   macd_bullish and
+   close < bb_upper * 0.98  // Не покупаем слишком высоко
+
+// ПРОДАЖА (Sell High):
+// 1. EMA пересечение вниз ИЛИ
+// 2. RSI перекуплен (выше 70) ИЛИ  
+// 3. Цена достигла верхней полосы Боллинджера ИЛИ
+// 4. MACD медвежий
+// 5. Стоп-лосс: цена упала ниже медленной EMA на 2%
+shortCondition = ta.crossunder(expo, ma) and barstate.isconfirmed and testPeriod()
+sellSignal_ema = shortCondition
+sellSignal_rsi = rsi > rsi_overbought
+sellSignal_bb = close >= bb_upper * 0.99
+sellSignal_macd = macd_bearish
+sellSignal_stop = close < ma * 0.98  // 2% стоп-лосс
+
+// Состояние позиции
+inLong = strategy.position_size > 0
+
+// Финальные сигналы
+final_buy = buySignal and not inLong
+final_sell = inLong and (sellSignal_ema or sellSignal_rsi or sellSignal_bb or sellSignal_macd or sellSignal_stop)
+
+if final_buy
+    strategy.entry("Buy", strategy.long, qty=qty)
+
+if final_sell
+    strategy.close("Buy")
+
+// Метки на графике
+plotshape(final_buy, title="Buy Signal", text="BUY", textcolor=color.white, style=shape.labelup, size=size.normal, location=location.belowbar, color=color.green)
+plotshape(final_sell, title="Sell Signal", text="SELL", textcolor=color.white, style=shape.labeldown, size=size.normal, location=location.abovebar, color=color.red)
+
+// Дополнительные индикаторы
+plot(rsi, "RSI", color=color.purple)
+hline(rsi_overbought, "RSI Overbought", color=color.red, linestyle=hline.style_dashed)
+hline(rsi_oversold, "RSI Oversold", color=color.green, linestyle=hline.style_dashed)
+
+plot(bb_upper, "BB Upper", color=color.gray, linestyle=hline.style_dashed)
+plot(bb_lower, "BB Lower", color=color.gray, linestyle=hline.style_dashed)
+
+// Exchange selection
+exchange_name = input.string("bybit", "Exchange", options=["bybit", "binance"])
+
+// --- Условия для алертов ---
+alertcondition(final_buy, title="Buy Webhook Signal",
+    message='{"secret":"kljGCCKJS78ef6vLKGA88","action":"buy","symbol":"{{ticker}}","usdt_amount":"10","exchange":"bybit"}')
+
+alertcondition(final_sell, title="Sell Webhook Signal",
+    message='{"secret":"kljGCCKJS78ef6vLKGA88","action":"sell","symbol":"{{ticker}}","usdt_amount":"10","exchange":"bybit"}')
+
+// Информационная таблица
+if barstate.islast
+    var table infoTable = table.new(position.top_right, 2, 10, bgcolor=color.white, border_width=1)
+    table.cell(infoTable, 0, 0, "Metric", text_color=color.black, bgcolor=color.gray)
+    table.cell(infoTable, 1, 0, "Value", text_color=color.black, bgcolor=color.gray)
+    table.cell(infoTable, 0, 1, "RSI", text_color=color.black)
+    table.cell(infoTable, 1, 1, str.tostring(rsi, "#.##"), text_color=color.black)
+    table.cell(infoTable, 0, 2, "MACD", text_color=color.black)
+    table.cell(infoTable, 1, 2, macd_bullish ? "BULLISH" : "BEARISH", text_color=macd_bullish ? color.green : color.red)
+    table.cell(infoTable, 0, 3, "BB Position", text_color=color.black)
+    table.cell(infoTable, 1, 3, close > bb_upper * 0.95 ? "HIGH" : close < bb_lower * 1.05 ? "LOW" : "MID", text_color=color.black)
+    table.cell(infoTable, 0, 4, "Position", text_color=color.black)
+    table.cell(infoTable, 1, 4, inLong ? "LONG" : "FLAT", text_color=inLong ? color.green : color.red)
+    table.cell(infoTable, 0, 5, "EMA Trend", text_color=color.black)
+    table.cell(infoTable, 1, 5, close > ma ? "UP" : "DOWN", text_color=close > ma ? color.green : color.red)
