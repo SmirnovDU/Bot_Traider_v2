@@ -2,7 +2,7 @@
 strategy("Quality EMA Cross - Buy Low Sell High v9", overlay=true)
 
 // Buy quantity
-qty = input.int(100000, "Buy quantity")
+qty = input.int(1000, "Buy quantity")
 usdtAmount = input.float(10, "USDT per trade")
 
 // Backtest period
@@ -107,8 +107,8 @@ plot(rsi, "RSI", color=color.purple)
 hline(rsi_overbought, "RSI Overbought", color=color.red, linestyle=hline.style_dashed)
 hline(rsi_oversold, "RSI Oversold", color=color.green, linestyle=hline.style_dashed)
 
-plot(bb_upper, "BB Upper", color=color.gray, linestyle=hline.style_dashed)
-plot(bb_lower, "BB Lower", color=color.gray, linestyle=hline.style_dashed)
+plot(bb_upper, "BB Upper", color=color.gray)
+plot(bb_lower, "BB Lower", color=color.gray)
 
 // Exchange selection
 exchange_name = input.string("bybit", "Exchange", options=["bybit", "binance"])
