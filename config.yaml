@@ -1,0 +1,104 @@
+# Конфигурация автономного торгового бота
+# Автор: Trading Bot v2.0
+
+# Настройки бирж
+exchanges:
+  binance:
+    api_key: "${BINANCE_API_KEY}"  # Из переменной окружения
+    secret_key: "${BINANCE_SECRET_KEY}"  # Из переменной окружения
+    testnet: "${BINANCE_TESTNET:false}"  # Из переменной окружения
+    enabled: true
+  
+  bybit:
+    api_key: "${BYBIT_API_KEY}"  # Из переменной окружения
+    secret_key: "${BYBIT_SECRET_KEY}"  # Из переменной окружения
+    testnet: "${BYBIT_TESTNET:false}"  # Из переменной окружения
+    enabled: false
+
+# Основные настройки торговли
+trading:
+  default_exchange: "${DEFAULT_EXCHANGE:binance}"  # Из переменной окружения
+  symbol: "BTC/USDT"  # Торговая пара
+  timeframe: "15m"  # Таймфрейм: 1m, 5m, 15m, 30m, 1h, 4h, 1d
+  trade_amount: 5  # Размер позиции в USDT
+  trade_amount_type: "fixed"  # fixed, percentage, coins
+  initial_capital: 1000  # Начальный капитал для расчета процентов
+  simulation_mode: "${SIMULATION_MODE:true}"  # Из переменной окружения
+  update_interval: 900  # Интервал обновления данных в секундах (15 минут)
+
+# Настройки стратегии
+strategy:
+  # EMA настройки
+  ema_fast: 9
+  ema_slow: 21
+  
+  # Фильтры (можно включать/выключать)
+  indicators:
+    use_adx: true
+    adx_length: 14
+    adx_smoothing: 14
+    adx_min: 20
+    
+    use_macd: false
+    macd_fast: 12
+    macd_slow: 26
+    macd_signal: 9
+    
+    use_rsi: false
+    rsi_length: 14
+    rsi_overbought: 70
+    rsi_oversold: 30
+    
+    use_tsi: false
+    tsi_long: 25
+    tsi_short: 13
+    
+    use_kdj: false
+    kdj_period: 9
+    kdj_signal: 3
+    
+    use_vwap: false
+    vwap_period: 20
+    
+    use_atr: false
+    atr_length: 14
+    atr_multiplier: 2.0
+
+# Настройки уведомлений
+notifications:
+  telegram_enabled: true
+  telegram_token: "${TELEGRAM_BOT_TOKEN}"  # Из переменной окружения
+  telegram_chat_id: "${TELEGRAM_CHAT_ID}"  # Из переменной окружения
+  
+  # Настройки уведомлений
+  notify_signals: true  # Уведомления о сигналах
+  notify_trades: true   # Уведомления о сделках
+  notify_errors: true   # Уведомления об ошибках
+
+# Настройки логирования
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  file: "bot.log"
+  max_size: "10 MB"
+  retention: "7 days"
+  compression: "zip"
+
+# Настройки бэктестинга (опционально)
+backtest:
+  enabled: false
+  start_date: "2023-01-01"
+  end_date: "2025-01-01"
+  initial_capital: 1000
+
+# Настройки базы данных
+database:
+  type: "sqlite"  # sqlite или mysql
+  sqlite_path: "trades.db"
+  
+  # MySQL настройки (если используется)
+  mysql:
+    host: "localhost"
+    port: 3306
+    user: "root"
+    password: ""
+    database: "trading_bot"

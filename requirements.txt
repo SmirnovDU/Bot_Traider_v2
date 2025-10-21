@@ -1,10 +1,23 @@
+# Основные зависимости для автономного торгового бота
+ccxt>=4.0.0
+pandas>=2.0.0
+numpy>=1.24.0
+pyyaml>=6.0.0
+loguru>=0.7.0
+requests>=2.31.0
+aiohttp>=3.9.0
+aiogram>=3.0.0
+ta-lib>=0.4.0
+
+# Дополнительные зависимости
+python-decouple==3.8
+mysql-connector-python==8.2.0
+matplotlib==3.8.2
+plotly==5.17.0
+
+# Для совместимости с существующим кодом (можно удалить позже)
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
-python-decouple==3.8
-loguru==0.7.2
 pybit==5.6.0
 python-binance==1.0.19
 httpx==0.25.2
-aiohttp==3.9.1
-requests==2.31.0
-mysql-connector-python==8.2.0
